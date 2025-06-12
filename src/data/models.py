@@ -251,6 +251,8 @@ class UserSettings:
     drinking_reminder_minutes: int = 90  # Remind every 90 minutes
     start_monitoring_on_launch: bool = False
     camera_id: int = 0
+    posture_model_complexity: int = 2  # 0=Lite, 1=Full, 2=Heavy
+    drinking_model_complexity: int = 1  # 0=Lite, 1=Full, 2=Heavy
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage or serialization."""
@@ -261,7 +263,9 @@ class UserSettings:
             "standing_reminder_minutes": self.standing_reminder_minutes,
             "drinking_reminder_minutes": self.drinking_reminder_minutes,
             "start_monitoring_on_launch": self.start_monitoring_on_launch,
-            "camera_id": self.camera_id
+            "camera_id": self.camera_id,
+            "posture_model_complexity": self.posture_model_complexity,
+            "drinking_model_complexity": self.drinking_model_complexity
         }
     
     @classmethod

@@ -17,6 +17,7 @@ All processing happens locally on your device with a strong focus on privacy.
 - **Drinking Detection**: Recognizes when you drink water and logs these events.
 - **Health Analytics**: View trends and statistics about your healthy behaviors.
 - **Customizable Reminders**: Optional notifications to encourage regular movement and hydration.
+- **Adjustable Accuracy**: Configure detection accuracy with different model complexity levels (Lite, Full, or Heavy).
 
 ## Installation
 
@@ -59,6 +60,20 @@ python -m src.main
 3. The system will begin monitoring automatically
 4. View your statistics in the dashboard
 5. Configure settings as needed
+
+### Optimizing Detection Accuracy
+
+For users experiencing detection accuracy issues:
+
+1. Go to the Settings panel
+2. Navigate to the "Detection Settings" section
+3. Adjust the model complexity:
+   - **Lite**: Fastest performance, lower accuracy
+   - **Full**: Balanced performance and accuracy
+   - **Heavy**: Highest accuracy, higher system requirements
+4. Save your settings and restart monitoring
+
+Different environments and lighting conditions may require different settings for optimal performance.
 
 ## Privacy
 

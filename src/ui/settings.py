@@ -103,6 +103,7 @@ class SettingsWidget(QWidget):
         self.add_heart_rate_settings()
         self.add_notification_settings()
         self.add_camera_settings()
+        self.add_detection_settings()
         
         # Add spacer at the bottom
         self.content_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
@@ -370,6 +371,60 @@ class SettingsWidget(QWidget):
         
         self.content_layout.addWidget(group_box)
     
+    def add_detection_settings(self) -> None:
+        """Add advanced detection settings group."""
+        group_box = QGroupBox("Detection Settings")
+        group_box.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                margin-top: 1ex;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        
+        form_layout = QFormLayout(group_box)
+        form_layout.setContentsMargins(15, 20, 15, 15)
+        form_layout.setSpacing(15)
+        
+        # Posture model complexity
+        posture_model_layout = QHBoxLayout()
+        self.posture_model_combo = QComboBox()
+        self.posture_model_combo.addItems(["Lite (Fast)", "Full (Balanced)", "Heavy (Accurate)"])
+        self.posture_model_combo.setToolTip("Higher accuracy models require more processing power")
+        posture_model_layout.addWidget(self.posture_model_combo)
+        posture_model_layout.addStretch()
+        form_layout.addRow("Posture detection model:", posture_model_layout)
+        
+        # Add a help label for posture model
+        posture_help_label = QLabel("Higher accuracy models provide better detection but require more processing power.")
+        posture_help_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        posture_help_label.setWordWrap(True)
+        form_layout.addRow("", posture_help_label)
+        
+        # Drinking model complexity
+        drinking_model_layout = QHBoxLayout()
+        self.drinking_model_combo = QComboBox()
+        self.drinking_model_combo.addItems(["Lite (Fast)", "Full (Balanced)", "Heavy (Accurate)"])
+        self.drinking_model_combo.setToolTip("Higher accuracy models require more processing power")
+        drinking_model_layout.addWidget(self.drinking_model_combo)
+        drinking_model_layout.addStretch()
+        form_layout.addRow("Drinking detection model:", drinking_model_layout)
+        
+        # Add a help label for drinking model
+        drinking_help_label = QLabel("Higher accuracy models provide better detection but require more processing power.")
+        drinking_help_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        drinking_help_label.setWordWrap(True)
+        form_layout.addRow("", drinking_help_label)
+        
+        self.content_layout.addWidget(group_box)
+    
     def load_settings(self) -> None:
         """Load settings from configuration."""
         try:
@@ -412,6 +467,13 @@ class SettingsWidget(QWidget):
             camera_id = self.user_settings.camera_id
             self.camera_combo.setCurrentIndex(min(camera_id, self.camera_combo.count() - 1))
             
+            # Detection settings
+            posture_model_complexity = self.user_settings.posture_model_complexity
+            self.posture_model_combo.setCurrentIndex(min(posture_model_complexity, 2))
+            
+            drinking_model_complexity = self.user_settings.drinking_model_complexity
+            self.drinking_model_combo.setCurrentIndex(min(drinking_model_complexity, 2))
+            
             logger.info("Settings loaded successfully")
             
         except Exception as e:
@@ -431,12 +493,18 @@ class SettingsWidget(QWidget):
             self.user_settings.standing_reminder_minutes = self.standing_reminder_spinbox.value()
             self.user_settings.drinking_reminder_minutes = self.drinking_reminder_spinbox.value()
             self.user_settings.camera_id = self.camera_combo.currentIndex()
+            self.user_settings.posture_model_complexity = self.posture_model_combo.currentIndex()
+            self.user_settings.drinking_model_complexity = self.drinking_model_combo.currentIndex()
             
             # Update heart rate detection settings
             self.config.set("detection.heart_rate.update_interval", self.heart_rate_update_interval_spinbox.value())
             
             # Update configuration
             self.config.set_user_settings(self.user_settings)
+            
+            # Update detection settings in config
+            self.config.set("detection.posture.model_complexity", self.posture_model_combo.currentIndex())
+            self.config.set("detection.drinking.model_complexity", self.drinking_model_combo.currentIndex())
             
             # Save configuration
             self.config.save()
