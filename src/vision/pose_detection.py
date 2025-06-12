@@ -42,6 +42,7 @@ class PostureDetector:
         history_size: int = 20,
         standing_threshold: float = 0.65,
         sitting_threshold: float = 0.35,
+        model_complexity: int = 1,
     ):
         """Initialize the posture detector.
         
@@ -51,6 +52,7 @@ class PostureDetector:
             history_size: Number of frames to keep in history for smoothing
             standing_threshold: Threshold for standing detection (0-1)
             sitting_threshold: Threshold for sitting detection (0-1)
+            model_complexity: MediaPipe model complexity (0=Lite, 1=Full, 2=Heavy)
         """
         config = get_config()
 
@@ -60,6 +62,7 @@ class PostureDetector:
         _history_size = config.get("detection.posture.history_size", history_size)
         _standing_threshold = config.get("detection.posture.standing_threshold", standing_threshold)
         _sitting_threshold = config.get("detection.posture.sitting_threshold", sitting_threshold)
+        _model_complexity = config.get("detection.posture.model_complexity", model_complexity)
 
         self.mp_pose = mp.solutions.pose
         self.mp_drawing = mp.solutions.drawing_utils
@@ -68,8 +71,10 @@ class PostureDetector:
         self.pose = self.mp_pose.Pose(
             min_detection_confidence=_min_detection_confidence,
             min_tracking_confidence=_min_tracking_confidence,
-            model_complexity=1,  # 0=Lite, 1=Full, 2=Heavy
+            model_complexity=_model_complexity,  # 0=Lite, 1=Full, 2=Heavy
         )
+        
+        logger.info(f"Using Pose model with complexity level: {_model_complexity}")
         
         self.history_size = _history_size
         self.standing_threshold = _standing_threshold

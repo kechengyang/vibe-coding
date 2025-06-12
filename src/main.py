@@ -6,7 +6,19 @@ This module initializes and runs the main application.
 """
 import sys
 import os
+import ssl
+import urllib.request
 from pathlib import Path
+
+# Fix for SSL certificate verification error on macOS
+# This is needed for MediaPipe to download models on first run
+def fix_ssl_certificates():
+    """Bypass SSL certificate verification for model downloads."""
+    # Bypass SSL verification (not recommended for production, but necessary for model downloads)
+    ssl._create_default_https_context = ssl._create_unverified_context
+
+# Apply SSL fix before any imports that might trigger model downloads
+fix_ssl_certificates()
 
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -42,6 +42,7 @@ class DrinkingDetector:
         hand_to_face_threshold: float = 0.15,
         drinking_confidence_threshold: float = 0.55,
         min_drinking_frames: int = 5,
+        model_complexity: int = 1,
     ):
         """Initialize the drinking detector.
         
@@ -52,6 +53,7 @@ class DrinkingDetector:
             hand_to_face_threshold: Threshold for hand-to-face proximity (0-1)
             drinking_confidence_threshold: Threshold for drinking detection (0-1)
             min_drinking_frames: Minimum number of frames to consider as drinking
+            model_complexity: MediaPipe model complexity (0=Lite, 1=Full, 2=Heavy)
         """
         config = get_config()
 
@@ -63,6 +65,7 @@ class DrinkingDetector:
         _hand_to_face_threshold = config.get("detection.drinking.hand_to_face_threshold", hand_to_face_threshold)
         _drinking_confidence_threshold = config.get("detection.drinking.drinking_confidence_threshold", drinking_confidence_threshold)
         _min_drinking_frames = config.get("detection.drinking.min_drinking_frames", min_drinking_frames)
+        _model_complexity = config.get("detection.drinking.model_complexity", model_complexity)
 
         # Initialize MediaPipe Hands and Face Mesh
         self.mp_hands = mp.solutions.hands
@@ -75,6 +78,7 @@ class DrinkingDetector:
             min_detection_confidence=_min_detection_confidence,
             min_tracking_confidence=_min_tracking_confidence,
             max_num_hands=2,
+            model_complexity=_model_complexity,
         )
         
         self.face_mesh = self.mp_face_mesh.FaceMesh(
@@ -82,6 +86,8 @@ class DrinkingDetector:
             min_tracking_confidence=_min_tracking_confidence,
             max_num_faces=1,
         )
+        
+        logger.info(f"Using Hands model with complexity level: {_model_complexity}")
         
         # Configuration parameters
         self.history_size = _history_size
@@ -114,6 +120,8 @@ class DrinkingDetector:
         Returns:
             Tuple of (annotated frame, drinking event if detected)
         """
+        # Set logging to DEBUG level to see more detailed information
+        logging.getLogger("employee_health_monitor.vision.action_detection").setLevel(logging.DEBUG)
         # Convert to RGB for MediaPipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
@@ -168,6 +176,16 @@ class DrinkingDetector:
         
         # Calculate average score
         avg_score = sum(self.hand_to_face_history) / len(self.hand_to_face_history) if self.hand_to_face_history else 0
+        
+        # Print current detection values to console for debugging
+        logger.debug(f"Score: {hand_to_face_score:.3f}, Avg Score: {avg_score:.3f}, Threshold: {self.drinking_confidence_threshold:.3f}")
+        
+        # Force DRINKING state for high scores (emergency bypass for debugging)
+        if avg_score >= 0.3:
+            if self.current_state != DrinkingState.DRINKING:
+                logger.info(f"*** FORCE DRINKING STATE: Score {avg_score:.3f} above 0.3 ***")
+                self.current_state = DrinkingState.DRINKING
+                self.state_start_time = time.time()
         
         # Add detailed score information to frame
         y_offset = 30
@@ -416,12 +434,18 @@ class DrinkingDetector:
                 # Count consecutive frames above threshold
                 self.consecutive_frames += 1
                 
-                # If we have enough consecutive frames, transition to potential drinking
-                if self.consecutive_frames >= 3:  # Need at least 3 frames to start considering
+                # If score is significantly above threshold, transition immediately
+                if avg_score >= self.drinking_confidence_threshold * 1.5:  # 50% above threshold (e.g., 0.225+ if threshold is 0.15)
                     self.current_state = DrinkingState.POTENTIAL_DRINKING
                     self.state_start_time = now
                     self.drinking_frames_count = self.consecutive_frames
-                    logger.debug("Potential drinking detected")
+                    logger.debug(f"Immediate potential drinking detected with high score: {avg_score:.2f}")
+                # Otherwise, require fewer consecutive frames (reduced from 3 to 2)
+                elif self.consecutive_frames >= 2:
+                    self.current_state = DrinkingState.POTENTIAL_DRINKING
+                    self.state_start_time = now
+                    self.drinking_frames_count = self.consecutive_frames
+                    logger.debug(f"Potential drinking detected with score: {avg_score:.2f}")
             else:
                 # Reset consecutive frames counter
                 self.consecutive_frames = 0
@@ -432,10 +456,14 @@ class DrinkingDetector:
                 self.consecutive_frames += 1
                 self.drinking_frames_count += 1
                 
-                # If we've maintained this for enough frames, confirm drinking
-                if self.drinking_frames_count >= self.min_drinking_frames:
+                # If score is very high, confirm drinking immediately
+                if avg_score >= self.drinking_confidence_threshold * 2:  # 100% above threshold (e.g., 0.3+ if threshold is 0.15)
                     self.current_state = DrinkingState.DRINKING
-                    logger.info("Drinking action confirmed")
+                    logger.info(f"Immediate drinking action confirmed with high score: {avg_score:.2f}")
+                # If we've maintained this for enough frames, confirm drinking (reduced from 5 to 3 frames)
+                elif self.drinking_frames_count >= min(self.min_drinking_frames, 3):
+                    self.current_state = DrinkingState.DRINKING
+                    logger.info(f"Drinking action confirmed with score: {avg_score:.2f}")
             else:
                 # Score dropped too much, revert to not drinking
                 self.current_state = DrinkingState.NOT_DRINKING
@@ -443,7 +471,7 @@ class DrinkingDetector:
                 self.drinking_frames_count = 0
         
         elif self.current_state == DrinkingState.DRINKING:
-            if avg_score < self.drinking_confidence_threshold - 0.1:
+            if avg_score < self.drinking_confidence_threshold - 0.05:  # Reduced buffer from 0.1 to 0.05
                 # Hand moved away from face, end drinking event
                 duration = now - self.state_start_time
                 

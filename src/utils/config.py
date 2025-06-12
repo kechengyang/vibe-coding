@@ -35,15 +35,17 @@ class Config:
                 "min_tracking_confidence": 0.5,
                 "history_size": 20,
                 "standing_threshold": 0.65,
-                "sitting_threshold": 0.35
+                "sitting_threshold": 0.35,
+                "model_complexity": 2  # 0=Lite, 1=Full, 2=Heavy
             },
             "drinking": {
-                "min_detection_confidence": 0.5,
-                "min_tracking_confidence": 0.5,
+                "min_detection_confidence": 0.15,
+                "min_tracking_confidence": 0.15,
                 "history_size": 20,
                 "hand_to_face_threshold": 0.15,
-                "drinking_confidence_threshold": 0.55,
-                "min_drinking_frames": 5
+                "drinking_confidence_threshold": 0.15,  # Lowered from 0.55 for increased sensitivity
+                "min_drinking_frames": 5,
+                "model_complexity": 1  # 0=Lite, 1=Full, 2=Heavy
             }
         },
         "ui": {

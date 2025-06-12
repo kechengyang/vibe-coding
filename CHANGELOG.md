@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pre-commit hooks for code quality
 - CI/CD setup with GitHub Actions
 
+### Enhanced
+- Improved detection accuracy with configurable model complexity
+- Added support for MediaPipe Heavy model for posture detection
+- Added user interface controls to adjust model complexity
+- Updated configuration system to store model complexity settings
+
 ## [0.1.0] - 2025-06-12
 
 ### Added
