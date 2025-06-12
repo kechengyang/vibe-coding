@@ -20,11 +20,13 @@ from PyQt6.QtGui import QIcon, QAction, QPixmap, QImage
 from .dashboard import Dashboard
 from .settings import SettingsWidget
 from .camera_view import CameraView
+from .heart_rate_view import HeartRateView
 from ..vision.capture import VideoCapture
 from ..vision.pose_detection import PostureDetector, PostureState
 from ..vision.action_detection import DrinkingDetector, DrinkingState
+from ..vision.heart_rate_detection import HeartRateDetector, HeartRateEvent
 from ..data.database import Database
-from ..data.models import PostureEvent, DrinkingEvent
+from ..data.models import PostureEvent, DrinkingEvent, HeartRateEvent
 from ..utils.config import get_config
 from ..utils.notifications import get_notification_manager
 from ..utils.logger import setup_logger
@@ -39,6 +41,7 @@ class MonitoringThread(QThread):
     frame_ready = pyqtSignal(object)
     posture_changed = pyqtSignal(object)
     drinking_detected = pyqtSignal(object)
+    heart_rate_updated = pyqtSignal(object)
     error_occurred = pyqtSignal(str)
     
     def __init__(self, parent=None):
@@ -56,6 +59,7 @@ class MonitoringThread(QThread):
         self.video_capture = None
         self.posture_detector = None
         self.drinking_detector = None
+        self.heart_rate_detector = None
         self.db = None
         
         # State variables
@@ -96,6 +100,15 @@ class MonitoringThread(QThread):
                 min_drinking_frames=self.config.get("detection.drinking.min_drinking_frames", 10)
             )
             
+            self.heart_rate_detector = HeartRateDetector(
+                buffer_size=self.config.get("detection.heart_rate.buffer_size", 300),
+                min_detection_confidence=self.config.get("detection.heart_rate.min_detection_confidence", 0.5),
+                min_tracking_confidence=self.config.get("detection.heart_rate.min_tracking_confidence", 0.5),
+                update_interval=self.config.get("detection.heart_rate.update_interval", 30),
+                min_bpm=self.config.get("detection.heart_rate.min_bpm", 45),
+                max_bpm=self.config.get("detection.heart_rate.max_bpm", 240)
+            )
+            
             # Start video capture
             if not self.video_capture.start():
                 self.error_occurred.emit("Failed to start video capture")
@@ -116,8 +129,11 @@ class MonitoringThread(QThread):
                     # Process frame for drinking detection
                     drinking_frame, drinking_event = self.drinking_detector.process_frame(posture_frame)
                     
+                    # Process frame for heart rate detection
+                    heart_rate_frame, heart_rate_event = self.heart_rate_detector.process_frame(drinking_frame)
+                    
                     # Emit frame
-                    self.frame_ready.emit(drinking_frame)
+                    self.frame_ready.emit(heart_rate_frame)
                     
                     # Handle posture event
                     if posture_event:
@@ -126,6 +142,10 @@ class MonitoringThread(QThread):
                     # Handle drinking event
                     if drinking_event:
                         self.handle_drinking_event(drinking_event)
+                    
+                    # Handle heart rate event
+                    if heart_rate_event:
+                        self.handle_heart_rate_event(heart_rate_event)
                     
                     # Update sitting duration
                     self.update_sitting_duration()
@@ -233,6 +253,31 @@ class MonitoringThread(QThread):
         # Emit signal
         self.drinking_detected.emit(event)
     
+    def handle_heart_rate_event(self, event: HeartRateEvent):
+        """Handle heart rate event.
+        
+        Args:
+            event: Heart rate event
+        """
+        # Log event
+        logger.info(f"Heart rate updated: {event.bpm:.1f} BPM (confidence: {event.confidence:.2f})")
+        
+        # Add to database
+        try:
+            event_id = self.db.add_heart_rate_event(
+                timestamp=event.timestamp,
+                bpm=event.bpm,
+                confidence=event.confidence
+            )
+            
+            logger.info(f"Added heart rate event with ID {event_id}")
+            
+        except Exception as e:
+            logger.error(f"Error adding heart rate event to database: {str(e)}")
+        
+        # Emit signal
+        self.heart_rate_updated.emit(event)
+    
     def update_sitting_duration(self):
         """Update sitting duration."""
         if self.current_posture_state == PostureState.SITTING:
@@ -336,6 +381,7 @@ class MainWindowWidget(QMainWindow):
         # Create tabs
         self.create_dashboard_tab()
         self.create_camera_tab()
+        self.create_heart_rate_tab()
         self.create_settings_tab()
         
         # Create status bar
@@ -357,6 +403,11 @@ class MainWindowWidget(QMainWindow):
         """Create the camera tab with live video feed."""
         self.camera_view = CameraView(self)
         self.tab_widget.addTab(self.camera_view, "Camera")
+    
+    def create_heart_rate_tab(self):
+        """Create the heart rate tab with heart rate data."""
+        self.heart_rate_view = HeartRateView(self)
+        self.tab_widget.addTab(self.heart_rate_view, "Heart Rate")
     
     def create_settings_tab(self):
         """Create the settings tab with configuration options."""
@@ -410,6 +461,7 @@ class MainWindowWidget(QMainWindow):
             # Connect signals
             self.monitoring_thread.error_occurred.connect(self.on_monitoring_error)
             self.monitoring_thread.frame_ready.connect(self.camera_view.update_frame)
+            self.monitoring_thread.heart_rate_updated.connect(self.on_heart_rate_updated)
             self.monitoring_thread.posture_changed.connect(self.dashboard.on_posture_event)
             self.monitoring_thread.drinking_detected.connect(self.dashboard.on_drinking_event)
             
@@ -487,6 +539,16 @@ class MainWindowWidget(QMainWindow):
             "Monitoring Error",
             error_message
         )
+    
+    @pyqtSlot(object)
+    def on_heart_rate_updated(self, event: HeartRateEvent):
+        """Handle heart rate updated event.
+        
+        Args:
+            event: Heart rate event
+        """
+        # Update status bar with current heart rate
+        self.status_bar.showMessage(f"Heart Rate: {event.bpm:.1f} BPM", 3000)
     
     @pyqtSlot()
     def on_settings_saved(self):

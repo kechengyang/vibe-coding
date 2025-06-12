@@ -25,6 +25,37 @@ class DrinkingState(Enum):
 
 
 @dataclass
+class HeartRateEvent:
+    """Class for storing heart rate event data."""
+    timestamp: float
+    bpm: float
+    confidence: float = 1.0
+    
+    @property
+    def datetime(self) -> str:
+        """Get formatted datetime string."""
+        return datetime.fromtimestamp(self.timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for storage or serialization."""
+        return {
+            "timestamp": self.timestamp,
+            "bpm": self.bpm,
+            "confidence": self.confidence,
+            "datetime": self.datetime
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'HeartRateEvent':
+        """Create from dictionary."""
+        return cls(
+            timestamp=data["timestamp"],
+            bpm=data["bpm"],
+            confidence=data.get("confidence", 1.0)
+        )
+
+
+@dataclass
 class PostureEvent:
     """Class for storing posture event data."""
     state: PostureState
@@ -96,6 +127,10 @@ class DailySummary:
     total_standing_time: float = 0.0
     standing_count: int = 0
     drinking_count: int = 0
+    avg_heart_rate: float = 0.0
+    min_heart_rate: float = 0.0
+    max_heart_rate: float = 0.0
+    heart_rate_count: int = 0
     summary_data: Dict[str, Any] = field(default_factory=dict)
     
     @property
@@ -180,9 +215,11 @@ class HealthScore:
     overall_score: float = 0.0
     standing_score: float = 0.0
     drinking_score: float = 0.0
+    heart_rate_score: float = 0.0
     standing_time: float = 0.0
     standing_count: int = 0
     drinking_count: int = 0
+    avg_heart_rate: float = 0.0
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage or serialization."""
@@ -207,6 +244,8 @@ class UserSettings:
     """Class for storing user settings."""
     standing_goal_minutes: int = 120  # 2 hours per day
     drinking_goal_count: int = 8  # 8 glasses per day
+    heart_rate_min: int = 60  # Minimum healthy heart rate
+    heart_rate_max: int = 100  # Maximum healthy heart rate
     notification_enabled: bool = True
     standing_reminder_minutes: int = 60  # Remind after 60 minutes of sitting
     drinking_reminder_minutes: int = 90  # Remind every 90 minutes

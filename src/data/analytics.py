@@ -90,6 +90,71 @@ class HealthAnalytics:
             "end_date": end_date.strftime('%Y-%m-%d') if end_date else None,
         }
     
+    def get_heart_rate_stats(
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """Get statistics for heart rate events.
+        
+        Args:
+            start_date: Start date for analysis (inclusive)
+            end_date: End date for analysis (inclusive)
+            
+        Returns:
+            Dictionary of heart rate statistics
+        """
+        # Get heart rate events
+        events = self.db.get_heart_rate_events(start_date, end_date)
+        
+        if not events:
+            return {
+                "total_events": 0,
+                "avg_bpm": 0,
+                "min_bpm": 0,
+                "max_bpm": 0,
+                "start_date": start_date.strftime('%Y-%m-%d') if start_date else None,
+                "end_date": end_date.strftime('%Y-%m-%d') if end_date else None,
+            }
+        
+        # Extract BPM values
+        bpm_values = [event["bpm"] for event in events]
+        
+        # Calculate statistics
+        total_events = len(events)
+        avg_bpm = np.mean(bpm_values) if bpm_values else 0
+        min_bpm = min(bpm_values) if bpm_values else 0
+        max_bpm = max(bpm_values) if bpm_values else 0
+        
+        # Calculate date range
+        if start_date and end_date:
+            days = (end_date - start_date).days + 1
+        elif events:
+            # Use event dates if no explicit range provided
+            timestamps = [event["timestamp"] for event in events]
+            min_date = date.fromtimestamp(min(timestamps))
+            max_date = date.fromtimestamp(max(timestamps))
+            days = (max_date - min_date).days + 1
+        else:
+            days = 1
+        
+        # Group events by hour to find patterns
+        hour_counts = {}
+        for event in events:
+            hour = datetime.fromtimestamp(event["timestamp"]).hour
+            hour_counts[hour] = hour_counts.get(hour, 0) + 1
+        
+        return {
+            "total_events": total_events,
+            "avg_bpm": avg_bpm,
+            "min_bpm": min_bpm,
+            "max_bpm": max_bpm,
+            "events_per_day": total_events / days,
+            "hour_distribution": hour_counts,
+            "start_date": start_date.strftime('%Y-%m-%d') if start_date else None,
+            "end_date": end_date.strftime('%Y-%m-%d') if end_date else None,
+        }
+    
     def get_drinking_stats(
         self, 
         start_date: Optional[date] = None, 
@@ -280,7 +345,7 @@ class HealthAnalytics:
         self, 
         date_value: Optional[date] = None
     ) -> Dict[str, Any]:
-        """Calculate an overall health score based on standing and drinking habits.
+        """Calculate an overall health score based on standing, drinking, and heart rate.
         
         Args:
             date_value: Date to calculate score for (defaults to today)
@@ -301,9 +366,11 @@ class HealthAnalytics:
                 "overall_score": 0,
                 "standing_score": 0,
                 "drinking_score": 0,
+                "heart_rate_score": 0,
                 "standing_time": 0,
                 "standing_count": 0,
                 "drinking_count": 0,
+                "avg_heart_rate": 0,
             }
         
         summary = summaries[0]
@@ -312,6 +379,7 @@ class HealthAnalytics:
         standing_time = summary.get("total_standing_time", 0)
         standing_count = summary.get("standing_count", 0)
         drinking_count = summary.get("drinking_count", 0)
+        avg_heart_rate = summary.get("avg_heart_rate", 0)
         
         # Calculate component scores
         
@@ -330,18 +398,48 @@ class HealthAnalytics:
         # Target: 8 drinking events per day
         drinking_score = min(100, (drinking_count / 8) * 100)
         
+        # Heart rate score (0-100)
+        # Target: Heart rate within healthy range (60-100 BPM)
+        heart_rate_score = 0
+        if avg_heart_rate > 0:
+            # Get user settings for heart rate range
+            settings = self.db.get_setting("user_settings", {})
+            min_heart_rate = settings.get("heart_rate_min", 60)
+            max_heart_rate = settings.get("heart_rate_max", 100)
+            
+            # Calculate score based on how close heart rate is to the middle of the healthy range
+            if min_heart_rate <= avg_heart_rate <= max_heart_rate:
+                heart_rate_score = 100  # Within healthy range
+            else:
+                # Calculate how far outside the range
+                if avg_heart_rate < min_heart_rate:
+                    distance = min_heart_rate - avg_heart_rate
+                    max_distance = min_heart_rate * 0.5  # 50% below min is max penalty
+                else:  # avg_heart_rate > max_heart_rate
+                    distance = avg_heart_rate - max_heart_rate
+                    max_distance = max_heart_rate * 0.5  # 50% above max is max penalty
+                
+                # Convert to score (100 = perfect, 0 = max penalty)
+                heart_rate_score = max(0, 100 - (distance / max_distance) * 100)
+        
         # Overall health score (0-100)
-        # 70% standing, 30% drinking
-        overall_score = (standing_score * 0.7) + (drinking_score * 0.3)
+        # 60% standing, 20% drinking, 20% heart rate
+        if avg_heart_rate > 0:
+            overall_score = (standing_score * 0.6) + (drinking_score * 0.2) + (heart_rate_score * 0.2)
+        else:
+            # If no heart rate data, use original formula
+            overall_score = (standing_score * 0.7) + (drinking_score * 0.3)
         
         return {
             "date": date_value.strftime('%Y-%m-%d'),
             "overall_score": overall_score,
             "standing_score": standing_score,
             "drinking_score": drinking_score,
+            "heart_rate_score": heart_rate_score,
             "standing_time": standing_time,
             "standing_count": standing_count,
             "drinking_count": drinking_count,
+            "avg_heart_rate": avg_heart_rate,
         }
     
     def get_recommendations(
@@ -394,6 +492,30 @@ class HealthAnalytics:
             recommendations.append(
                 "You're doing well with hydration, but try to increase to 8 glasses of water per day."
             )
+        
+        # Heart rate recommendations
+        avg_heart_rate = health_score["avg_heart_rate"]
+        
+        if avg_heart_rate > 0:  # If heart rate data exists
+            # Get user settings for heart rate range
+            settings = self.db.get_setting("user_settings", {})
+            min_heart_rate = settings.get("heart_rate_min", 60)
+            max_heart_rate = settings.get("heart_rate_max", 100)
+            
+            if avg_heart_rate < min_heart_rate:
+                recommendations.append(
+                    f"Your average heart rate ({avg_heart_rate:.1f} BPM) is below the recommended range. "
+                    "Consider moderate exercise to improve cardiovascular health."
+                )
+            elif avg_heart_rate > max_heart_rate:
+                recommendations.append(
+                    f"Your average heart rate ({avg_heart_rate:.1f} BPM) is above the recommended range. "
+                    "Consider relaxation techniques and consult a healthcare professional if it persists."
+                )
+            else:
+                recommendations.append(
+                    f"Your heart rate is within a healthy range at {avg_heart_rate:.1f} BPM. Keep up the good work!"
+                )
         
         # Add a general recommendation if doing well
         if health_score["overall_score"] >= 80:
