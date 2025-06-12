@@ -290,18 +290,25 @@ class PostureDetector:
         # Weights depend on which features are available and reliable
         if lower_body_visible:
             # If lower body is visible, use all features
+            # Calculate torso height ratio (correctly normalized)
+            torso_height_ratio = min(1.0, torso_height / max(0.01, body_height / visible_parts))
+            
             final_score = (
-                0.3 * (torso_height / (body_height / visible_parts)) +  # Torso height ratio
-                0.4 * knee_angle_score +                                # Knee angle
-                0.2 * hip_angle_score +                                 # Hip angle
-                0.1 * alignment_score                                   # Torso alignment
+                0.3 * torso_height_ratio +  # Torso height ratio
+                0.4 * knee_angle_score +    # Knee angle
+                0.2 * hip_angle_score +     # Hip angle
+                0.1 * alignment_score       # Torso alignment
             )
         else:
-            # If only upper body is visible, rely more on torso features
+            # If only upper body is visible, rely more on hip angle and alignment
+            # For upper body only, use a more conservative approach for torso_height_ratio
+            # Since we can't see the legs, we need to rely more on upper body cues
+            torso_height_ratio = min(0.7, torso_height / max(0.01, body_height / visible_parts))
+            
             final_score = (
-                0.6 * (torso_height / (body_height / visible_parts)) +  # Torso height ratio
-                0.3 * hip_angle_score +                                 # Hip angle
-                0.1 * alignment_score                                   # Torso alignment
+                0.4 * torso_height_ratio +  # Limited torso height influence
+                0.4 * hip_angle_score +     # More weight on hip angle
+                0.2 * alignment_score       # More weight on alignment
             )
         
         # Ensure score is in 0-1 range
