@@ -178,27 +178,48 @@ class HeartRateDetector:
                 connection_drawing_spec=mp.solutions.drawing_styles.get_default_face_mesh_tesselation_style()
             )
         
-        # Add heart rate text to frame
+        # Add heart rate information to top-left corner with smaller font
         confidence_color = (0, 255, 0) if self.confidence >= 0.5 else (0, 165, 255) if self.confidence >= 0.3 else (0, 0, 255)
+        
+        # Get frame dimensions
+        height, width, _ = annotated_frame.shape
+        
+        # Add semi-transparent background for better readability
+        overlay = annotated_frame.copy()
+        cv2.rectangle(overlay, (5, 5), (200, 65), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.5, annotated_frame, 0.5, 0, annotated_frame)
+        
+        # Add section title
         cv2.putText(
             annotated_frame,
-            f"Heart Rate: {self.current_bpm:.1f} BPM",
-            (10, 30),
+            "HEART RATE",
+            (10, 20),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1,
+            0.5,
+            (255, 255, 255),
+            1
+        )
+        
+        # Add heart rate text
+        cv2.putText(
+            annotated_frame,
+            f"Rate: {self.current_bpm:.1f} BPM",
+            (10, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
             confidence_color,
-            2
+            1
         )
         
         # Add confidence text
         cv2.putText(
             annotated_frame,
             f"Confidence: {self.confidence:.2f}",
-            (10, 70),
+            (10, 60),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1,
+            0.6,
             confidence_color,
-            2
+            1
         )
         
         return annotated_frame, event

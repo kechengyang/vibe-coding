@@ -187,43 +187,35 @@ class DrinkingDetector:
                 self.current_state = DrinkingState.DRINKING
                 self.state_start_time = time.time()
         
-        # Add detailed score information to frame
-        y_offset = 30
+        # Get frame dimensions
+        height, width, _ = annotated_frame.shape
+        
+        # Add semi-transparent background for better readability
+        overlay = annotated_frame.copy()
+        cv2.rectangle(overlay, (5, height-125), (200, height-70), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.5, annotated_frame, 0.5, 0, annotated_frame)
+        
+        # Add section title
         cv2.putText(
             annotated_frame,
-            f"Drinking Score: {avg_score:.2f}",
-            (10, y_offset),
+            "DRINKING DETECTION",
+            (10, height-110),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 255, 0),
-            2
+            0.5,
+            (255, 255, 255),
+            1
         )
         
-        # Add debug information if available
-        if hasattr(self, 'debug_info') and self.debug_info:
-            y_offset += 25
-            cv2.putText(
-                annotated_frame,
-                f"Wrist-Mouth Dist: {self.debug_info.get('wrist_to_mouth_dist', 0):.2f}",
-                (10, y_offset),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (255, 255, 0),
-                1
-            )
-            
-            y_offset += 20
-            cv2.putText(
-                annotated_frame,
-                f"Proximity: {self.debug_info.get('proximity_score', 0):.2f} | " +
-                f"Hand: {self.debug_info.get('hand_config_score', 0):.2f} | " +
-                f"Move: {self.debug_info.get('movement_score', 0):.2f}",
-                (10, y_offset),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (255, 255, 0),
-                1
-            )
+        # Add drinking score text to frame
+        cv2.putText(
+            annotated_frame,
+            f"Score: {avg_score:.2f}",
+            (10, height-90),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 255, 0),
+            1
+        )
         
         # Determine state and check for drinking events
         event = self._update_state(avg_score)
@@ -232,12 +224,54 @@ class DrinkingDetector:
         cv2.putText(
             annotated_frame,
             f"State: {self.current_state.name}",
-            (10, 70),
+            (10, height-70),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1,
+            0.6,
             (0, 255, 0),
-            2
+            1
         )
+        
+        # Add debug information if available (in top-right corner)
+        if hasattr(self, 'debug_info') and self.debug_info:
+            # Add semi-transparent background for debug info
+            debug_overlay = annotated_frame.copy()
+            cv2.rectangle(debug_overlay, (width-210, 5), (width-5, 65), (0, 0, 0), -1)
+            cv2.addWeighted(debug_overlay, 0.5, annotated_frame, 0.5, 0, annotated_frame)
+            
+            # Add debug title
+            cv2.putText(
+                annotated_frame,
+                "DEBUG INFO",
+                (width-200, 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (200, 200, 200),
+                1
+            )
+            
+            # Add wrist-mouth distance
+            cv2.putText(
+                annotated_frame,
+                f"Wrist-Mouth: {self.debug_info.get('wrist_to_mouth_dist', 0):.2f}",
+                (width-200, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (200, 200, 200),
+                1
+            )
+            
+            # Add scores
+            cv2.putText(
+                annotated_frame,
+                f"P:{self.debug_info.get('proximity_score', 0):.2f} | " +
+                f"H:{self.debug_info.get('hand_config_score', 0):.2f} | " +
+                f"M:{self.debug_info.get('movement_score', 0):.2f}",
+                (width-200, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (200, 200, 200),
+                1
+            )
         
         return annotated_frame, event
     

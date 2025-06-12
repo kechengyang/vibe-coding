@@ -153,15 +153,34 @@ class PostureDetector:
             # Determine posture state
             avg_score = sum(self.posture_history) / len(self.posture_history)
             
+            # Get frame dimensions
+            height, width, _ = annotated_frame.shape
+            
+            # Add semi-transparent background for better readability
+            overlay = annotated_frame.copy()
+            cv2.rectangle(overlay, (5, height-65), (200, height-5), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.5, annotated_frame, 0.5, 0, annotated_frame)
+            
+            # Add section title
+            cv2.putText(
+                annotated_frame,
+                "POSTURE",
+                (10, height-50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 255),
+                1
+            )
+            
             # Add posture score text to frame
             cv2.putText(
                 annotated_frame,
-                f"Posture Score: {avg_score:.2f}",
-                (10, 30),
+                f"Score: {avg_score:.2f}",
+                (10, height-30),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                0.6,
                 (0, 255, 0),
-                2
+                1
             )
             
             # Determine state
@@ -190,11 +209,11 @@ class PostureDetector:
             cv2.putText(
                 annotated_frame,
                 f"State: {self.current_state.name}",
-                (10, 70),
+                (10, height-10),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                1,
+                0.6,
                 (0, 255, 0),
-                2
+                1
             )
             
             return annotated_frame, event
