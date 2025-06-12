@@ -184,7 +184,7 @@ class Dashboard(QWidget):
         # Set up refresh timer
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh_data)
-        self.refresh_timer.start(60000)  # Refresh every minute
+        self.refresh_timer.start(30000)  # Refresh every 30 seconds
         
         # Initial data load
         self.refresh_data()

@@ -19,6 +19,7 @@ from PyQt6.QtGui import QIcon, QAction, QPixmap, QImage
 
 from .dashboard import Dashboard
 from .settings import SettingsWidget
+from .camera_view import CameraView
 from ..vision.capture import VideoCapture
 from ..vision.pose_detection import PostureDetector, PostureState
 from ..vision.action_detection import DrinkingDetector, DrinkingState
@@ -300,6 +301,7 @@ class MainWindowWidget(QMainWindow):
         
         # Create tabs
         self.create_dashboard_tab()
+        self.create_camera_tab()
         self.create_settings_tab()
         
         # Create status bar
@@ -316,6 +318,11 @@ class MainWindowWidget(QMainWindow):
         """Create the dashboard tab with statistics and visualizations."""
         self.dashboard = Dashboard(self)
         self.tab_widget.addTab(self.dashboard, "Dashboard")
+    
+    def create_camera_tab(self):
+        """Create the camera tab with live video feed."""
+        self.camera_view = CameraView(self)
+        self.tab_widget.addTab(self.camera_view, "Camera")
     
     def create_settings_tab(self):
         """Create the settings tab with configuration options."""
@@ -359,6 +366,7 @@ class MainWindowWidget(QMainWindow):
             
             # Connect signals
             self.monitoring_thread.error_occurred.connect(self.on_monitoring_error)
+            self.monitoring_thread.frame_ready.connect(self.camera_view.update_frame)
             
             # Start thread
             self.monitoring_thread.start()
@@ -404,6 +412,9 @@ class MainWindowWidget(QMainWindow):
             self.start_action.setEnabled(True)
             self.stop_action.setEnabled(False)
             self.status_bar.showMessage("Monitoring stopped")
+            
+            # Clear camera view
+            self.camera_view.clear_frame()
             
             logger.info("Monitoring stopped")
             
