@@ -48,7 +48,14 @@ class CameraView(QWidget):
         
         # Add placeholder text
         self.image_label.setText("Camera feed will appear here when monitoring starts")
-        self.image_label.setStyleSheet("color: #ffffff; background-color: #000000; font-size: 16px;")
+        self.image_label.setStyleSheet("""
+            color: #ffffff; 
+            background-color: #000000; 
+            font-size: 16px;
+            font-weight: bold;
+            padding: 20px;
+            qproperty-alignment: AlignCenter;
+        """)
         
         main_layout.addWidget(self.image_label)
     
@@ -66,10 +73,29 @@ class CameraView(QWidget):
             # Convert BGR to RGB
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
-            # Create QImage from frame
+            # Add a black bar at the bottom for text
             height, width, channels = rgb_frame.shape
+            text_bar_height = 40
+            frame_with_bar = np.zeros((height + text_bar_height, width, channels), dtype=np.uint8)
+            frame_with_bar[:height, :, :] = rgb_frame
+            
+            # Add text to the black bar
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(
+                frame_with_bar, 
+                "Live Camera Feed - All processing happens locally for privacy", 
+                (10, height + 30), 
+                font, 
+                0.7, 
+                (255, 255, 255), 
+                2, 
+                cv2.LINE_AA
+            )
+            
+            # Create QImage from frame
+            height_with_bar, width, channels = frame_with_bar.shape
             bytes_per_line = channels * width
-            q_image = QImage(rgb_frame.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+            q_image = QImage(frame_with_bar.data, width, height_with_bar, bytes_per_line, QImage.Format.Format_RGB888)
             
             # Create QPixmap from QImage
             pixmap = QPixmap.fromImage(q_image)
@@ -92,7 +118,14 @@ class CameraView(QWidget):
         """Clear the displayed frame."""
         self.image_label.clear()
         self.image_label.setText("Camera feed will appear here when monitoring starts")
-        self.image_label.setStyleSheet("color: #ffffff; background-color: #000000; font-size: 16px;")
+        self.image_label.setStyleSheet("""
+            color: #ffffff; 
+            background-color: #000000; 
+            font-size: 16px;
+            font-weight: bold;
+            padding: 20px;
+            qproperty-alignment: AlignCenter;
+        """)
 
 
 # Example usage

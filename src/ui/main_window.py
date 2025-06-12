@@ -283,7 +283,41 @@ class MainWindowWidget(QMainWindow):
         
         # Set window properties
         self.setWindowTitle("Employee Health Monitor")
-        self.setMinimumSize(1000, 700)
+        self.setMinimumSize(1200, 800)
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f8f9fa;
+            }
+            QStatusBar {
+                background-color: #ffffff;
+                border-top: 1px solid #e9ecef;
+                padding: 5px;
+            }
+            QToolBar {
+                background-color: #ffffff;
+                border-bottom: 1px solid #e9ecef;
+                spacing: 10px;
+                padding: 5px;
+            }
+            QTabWidget::pane {
+                border: none;
+                background-color: #f8f9fa;
+            }
+            QTabBar::tab {
+                background-color: #e9ecef;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                padding: 8px 16px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: #ffffff;
+                border-bottom: 2px solid #007bff;
+            }
+            QTabBar::tab:hover:!selected {
+                background-color: #dee2e6;
+            }
+        """)
         
         # Initialize components
         self.monitoring_thread = None
@@ -337,11 +371,17 @@ class MainWindowWidget(QMainWindow):
         
         # Start monitoring action
         self.start_action = QAction("Start Monitoring", self)
+        self.start_action.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_MediaPlay))
+        self.start_action.setIconText("Start")
+        self.start_action.setToolTip("Start health monitoring")
         self.start_action.triggered.connect(self.start_monitoring)
         toolbar.addAction(self.start_action)
         
         # Stop monitoring action
         self.stop_action = QAction("Stop Monitoring", self)
+        self.stop_action.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_MediaStop))
+        self.stop_action.setIconText("Stop")
+        self.stop_action.setToolTip("Stop health monitoring")
         self.stop_action.triggered.connect(self.stop_monitoring)
         self.stop_action.setEnabled(False)
         toolbar.addAction(self.stop_action)
@@ -351,6 +391,9 @@ class MainWindowWidget(QMainWindow):
         
         # Exit action
         exit_action = QAction("Exit", self)
+        exit_action.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DialogCloseButton))
+        exit_action.setIconText("Exit")
+        exit_action.setToolTip("Exit the application")
         exit_action.triggered.connect(self.close)
         toolbar.addAction(exit_action)
     
@@ -367,6 +410,8 @@ class MainWindowWidget(QMainWindow):
             # Connect signals
             self.monitoring_thread.error_occurred.connect(self.on_monitoring_error)
             self.monitoring_thread.frame_ready.connect(self.camera_view.update_frame)
+            self.monitoring_thread.posture_changed.connect(self.dashboard.on_posture_event)
+            self.monitoring_thread.drinking_detected.connect(self.dashboard.on_drinking_event)
             
             # Start thread
             self.monitoring_thread.start()

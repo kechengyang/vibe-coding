@@ -33,17 +33,17 @@ class Config:
             "posture": {
                 "min_detection_confidence": 0.5,
                 "min_tracking_confidence": 0.5,
-                "history_size": 10,
-                "standing_threshold": 0.7,
-                "sitting_threshold": 0.3
+                "history_size": 20,
+                "standing_threshold": 0.65,
+                "sitting_threshold": 0.35
             },
             "drinking": {
                 "min_detection_confidence": 0.5,
                 "min_tracking_confidence": 0.5,
-                "history_size": 15,
+                "history_size": 20,
                 "hand_to_face_threshold": 0.15,
-                "drinking_confidence_threshold": 0.7,
-                "min_drinking_frames": 10
+                "drinking_confidence_threshold": 0.65,
+                "min_drinking_frames": 8
             }
         },
         "ui": {

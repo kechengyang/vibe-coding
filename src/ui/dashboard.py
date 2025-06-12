@@ -9,10 +9,11 @@ from typing import Dict, List, Any, Optional
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
-    QFrame, QScrollArea, QSizePolicy, QGridLayout, QSpacerItem
+    QFrame, QScrollArea, QSizePolicy, QGridLayout, QSpacerItem,
+    QSplitter
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSlot
-from PyQt6.QtGui import QFont, QColor, QPalette
+from PyQt6.QtCore import Qt, QTimer, pyqtSlot, QSize
+from PyQt6.QtGui import QFont, QColor, QPalette, QIcon
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -20,8 +21,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ..data.analytics import HealthAnalytics
-from ..data.models import DailySummary, HealthScore
+from ..data.models import DailySummary, HealthScore, PostureEvent, DrinkingEvent
 from ..utils.config import get_config
+from .activity_log import ActivityLog
 
 logger = logging.getLogger("employee_health_monitor.ui.dashboard")
 
@@ -61,24 +63,25 @@ class StatCard(QFrame):
         self.setFrameShadow(QFrame.Shadow.Raised)
         self.setStyleSheet("""
             StatCard {
-                background-color: #f8f9fa;
-                border-radius: 8px;
+                background-color: #ffffff;
+                border-radius: 12px;
                 border: 1px solid #e9ecef;
             }
         """)
         
         # Create layout
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(8)
         
         # Create title label
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #6c757d; font-size: 14px;")
+        title_label.setStyleSheet("color: #6c757d; font-size: 14px; font-weight: 500;")
         layout.addWidget(title_label)
         
         # Create value label
         self.value_label = QLabel(value)
-        self.value_label.setStyleSheet("color: #212529; font-size: 24px; font-weight: bold;")
+        self.value_label.setStyleSheet("color: #212529; font-size: 28px; font-weight: bold;")
         layout.addWidget(self.value_label)
         
         # Create subtitle label if provided
@@ -117,20 +120,26 @@ class RecommendationCard(QFrame):
         self.setFrameShadow(QFrame.Shadow.Raised)
         self.setStyleSheet("""
             RecommendationCard {
-                background-color: #f8f9fa;
-                border-radius: 8px;
+                background-color: #ffffff;
+                border-radius: 12px;
                 border: 1px solid #e9ecef;
             }
         """)
         
         # Create layout
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(15, 15, 15, 15)
+        self.layout.setContentsMargins(20, 20, 20, 20)
+        self.layout.setSpacing(12)
         
-        # Create title label
+        # Create title label with icon
+        title_layout = QHBoxLayout()
+        title_layout.setSpacing(8)
+        
         title_label = QLabel("Recommendations")
-        title_label.setStyleSheet("color: #212529; font-size: 16px; font-weight: bold;")
-        self.layout.addWidget(title_label)
+        title_label.setStyleSheet("color: #212529; font-size: 18px; font-weight: bold;")
+        title_layout.addWidget(title_label)
+        
+        self.layout.addLayout(title_layout)
         
         # Create recommendations list
         self.recommendations_layout = QVBoxLayout()
@@ -160,7 +169,7 @@ class RecommendationCard(QFrame):
         for recommendation in recommendations:
             label = QLabel(f"• {recommendation}")
             label.setWordWrap(True)
-            label.setStyleSheet("color: #495057; font-size: 14px; margin-top: 5px;")
+            label.setStyleSheet("color: #495057; font-size: 14px; margin-top: 8px; line-height: 1.4;")
             self.recommendations_layout.addWidget(label)
 
 
@@ -177,6 +186,9 @@ class Dashboard(QWidget):
         
         # Create analytics engine
         self.analytics = HealthAnalytics()
+        
+        # Create activity log
+        self.activity_log = ActivityLog()
         
         # Set up UI
         self.init_ui()
@@ -213,6 +225,25 @@ class Dashboard(QWidget):
         header_layout.addWidget(period_label)
         
         self.period_combo = QComboBox()
+        self.period_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                padding: 5px 10px;
+                background-color: white;
+                min-width: 120px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox QAbstractItemView {
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                background-color: white;
+                selection-background-color: #007bff;
+            }
+        """)
         self.period_combo.addItems(["Today", "Yesterday", "Last 7 Days", "Last 30 Days"])
         self.period_combo.setCurrentIndex(0)
         self.period_combo.currentIndexChanged.connect(self.on_period_changed)
@@ -220,19 +251,36 @@ class Dashboard(QWidget):
         
         main_layout.addLayout(header_layout)
         
+        # Create splitter for main content and activity log
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #e9ecef;
+                width: 1px;
+            }
+        """)
+        
         # Create scroll area for dashboard content
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                background-color: #f8f9fa;
+                border: none;
+            }
+        """)
         
         # Create content widget
         content_widget = QWidget()
+        content_widget.setStyleSheet("background-color: #f8f9fa;")
         self.content_layout = QVBoxLayout(content_widget)
         self.content_layout.setContentsMargins(0, 0, 0, 0)
         self.content_layout.setSpacing(20)
         
         # Add stat cards
         stats_layout = QHBoxLayout()
+        stats_layout.setSpacing(15)
         
         self.standing_time_card = StatCard("Standing Time", "0 min", "Total time spent standing")
         stats_layout.addWidget(self.standing_time_card)
@@ -256,6 +304,7 @@ class Dashboard(QWidget):
         charts_layout = QGridLayout()
         charts_layout.setColumnStretch(0, 1)
         charts_layout.setColumnStretch(1, 1)
+        charts_layout.setSpacing(15)
         
         # Standing time chart
         self.standing_time_chart = MplCanvas(width=5, height=3)
@@ -276,7 +325,22 @@ class Dashboard(QWidget):
         
         # Set scroll area widget
         scroll_area.setWidget(content_widget)
-        main_layout.addWidget(scroll_area)
+        
+        # Create activity log container
+        activity_log_container = QWidget()
+        activity_log_layout = QVBoxLayout(activity_log_container)
+        activity_log_layout.setContentsMargins(10, 0, 10, 0)
+        activity_log_layout.addWidget(self.activity_log)
+        
+        # Add widgets to splitter
+        splitter.addWidget(scroll_area)
+        splitter.addWidget(activity_log_container)
+        
+        # Set initial sizes (70% for dashboard, 30% for activity log)
+        splitter.setSizes([700, 300])
+        
+        # Add splitter to main layout
+        main_layout.addWidget(splitter)
     
     @pyqtSlot()
     def refresh_data(self) -> None:
@@ -404,6 +468,94 @@ class Dashboard(QWidget):
             index: Selected index in the combo box
         """
         self.refresh_data()
+    
+    @pyqtSlot(object)
+    def on_posture_event(self, event: PostureEvent) -> None:
+        """Handle posture event.
+        
+        Args:
+            event: Posture event
+        """
+        try:
+            # Add event to activity log
+            self.activity_log.add_posture_event(event)
+            
+            # Update dashboard stats in real-time if event is STANDING
+            if event.state.name == "STANDING":
+                # Get today's date
+                today = date.today()
+                
+                # Get updated standing statistics
+                standing_stats = self.analytics.get_standing_stats(today, today)
+                
+                # Update standing time card
+                self.standing_time_card.update_value(f"{int(standing_stats['total_duration'] / 60)} min")
+                
+                # Update standing count card
+                self.standing_count_card.update_value(str(standing_stats['total_events']))
+                
+                # Get updated health score
+                health_score = self.analytics.get_health_score(today)
+                
+                # Update health score card
+                self.health_score_card.update_value(f"{int(health_score['overall_score'])}%")
+                
+                # Get updated recommendations
+                recommendations = self.analytics.get_recommendations(today)
+                
+                # Update recommendations
+                self.recommendations_card.update_recommendations(recommendations)
+                
+                # Update charts if current period is Today
+                if self.period_combo.currentText() == "Today":
+                    self.update_charts(today, today)
+                
+                logger.info("Dashboard updated in real-time for posture event")
+                
+        except Exception as e:
+            logger.error(f"Error updating dashboard for posture event: {str(e)}")
+    
+    @pyqtSlot(object)
+    def on_drinking_event(self, event: DrinkingEvent) -> None:
+        """Handle drinking event.
+        
+        Args:
+            event: Drinking event
+        """
+        try:
+            # Add event to activity log
+            self.activity_log.add_drinking_event(event)
+            
+            # Update dashboard stats in real-time
+            # Get today's date
+            today = date.today()
+            
+            # Get updated drinking statistics
+            drinking_stats = self.analytics.get_drinking_stats(today, today)
+            
+            # Update drinking count card
+            self.drinking_count_card.update_value(str(drinking_stats['total_events']))
+            
+            # Get updated health score
+            health_score = self.analytics.get_health_score(today)
+            
+            # Update health score card
+            self.health_score_card.update_value(f"{int(health_score['overall_score'])}%")
+            
+            # Get updated recommendations
+            recommendations = self.analytics.get_recommendations(today)
+            
+            # Update recommendations
+            self.recommendations_card.update_recommendations(recommendations)
+            
+            # Update charts if current period is Today
+            if self.period_combo.currentText() == "Today":
+                self.update_charts(today, today)
+            
+            logger.info("Dashboard updated in real-time for drinking event")
+            
+        except Exception as e:
+            logger.error(f"Error updating dashboard for drinking event: {str(e)}")
     
     def closeEvent(self, event) -> None:
         """Handle widget close event."""
