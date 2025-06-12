@@ -5,31 +5,28 @@ Employee Health Monitoring System - Main Application Entry Point
 This module initializes and runs the main application.
 """
 import sys
-import logging
+import os
 from pathlib import Path
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(Path.home() / ".employee_health_monitor" / "app.log", mode="a"),
-    ],
-)
-logger = logging.getLogger("employee_health_monitor")
+# Add the project root directory to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
-# Ensure the log directory exists
-log_dir = Path.home() / ".employee_health_monitor"
-log_dir.mkdir(exist_ok=True)
+# Import after path setup
+from src.utils.logger import setup_logger
+from src.utils.config import get_config
+from src.ui.main_window import MainWindow
+
+# Set up logger
+logger = setup_logger("employee_health_monitor")
 
 def main():
     """Main application entry point."""
     try:
         logger.info("Starting Employee Health Monitoring System")
         
-        # Import UI components here to avoid circular imports
-        from src.ui.main_window import MainWindow
+        # Load configuration
+        config = get_config()
         
         # Create and show the main application window
         app = MainWindow(sys.argv)
