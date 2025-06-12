@@ -66,6 +66,16 @@ class Database:
             )
             ''')
             
+            # Heart rate events table
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS heart_rate_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp REAL NOT NULL,
+                bpm REAL NOT NULL,
+                confidence REAL
+            )
+            ''')
+            
             # Daily summary table
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS daily_summaries (
@@ -209,6 +219,50 @@ class Database:
             self.conn.rollback()
             return False
     
+    def add_heart_rate_event(
+        self,
+        timestamp: float,
+        bpm: float,
+        confidence: float = 1.0
+    ) -> int:
+        """Add a heart rate event to the database.
+        
+        Args:
+            timestamp: Time of the heart rate measurement (timestamp)
+            bpm: Heart rate in beats per minute
+            confidence: Confidence level of the detection (0-1)
+            
+        Returns:
+            int: ID of the inserted event
+        """
+        self._ensure_connection()
+        
+        try:
+            cursor = self.conn.cursor()
+            
+            cursor.execute(
+                '''
+                INSERT INTO heart_rate_events (timestamp, bpm, confidence)
+                VALUES (?, ?, ?)
+                ''',
+                (timestamp, bpm, confidence)
+            )
+            
+            self.conn.commit()
+            event_id = cursor.lastrowid
+            
+            logger.info(f"Added heart rate event with ID {event_id}, BPM: {bpm:.1f}")
+            
+            # Update daily summary
+            self._update_daily_summary_for_heart_rate(timestamp, bpm)
+            
+            return event_id
+            
+        except sqlite3.Error as e:
+            logger.error(f"Error adding heart rate event: {str(e)}")
+            self.conn.rollback()
+            raise
+    
     def add_drinking_event(
         self, 
         timestamp: float, 
@@ -351,6 +405,94 @@ class Database:
             logger.error(f"Error updating daily summary for drinking: {str(e)}")
             self.conn.rollback()
     
+    def _update_daily_summary_for_heart_rate(self, timestamp: float, bpm: float) -> None:
+        """Update daily summary for a heart rate event.
+        
+        Args:
+            timestamp: Event timestamp
+            bpm: Heart rate in beats per minute
+        """
+        date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+        
+        try:
+            cursor = self.conn.cursor()
+            
+            # Check if summary exists for this date
+            cursor.execute(
+                """
+                SELECT avg_heart_rate, min_heart_rate, max_heart_rate, heart_rate_count, summary_data
+                FROM daily_summaries WHERE date = ?
+                """,
+                (date_str,)
+            )
+            result = cursor.fetchone()
+            
+            if result:
+                # Update existing summary
+                avg_heart_rate, min_heart_rate, max_heart_rate, heart_rate_count, summary_data_json = result
+                
+                # Parse summary data
+                summary_data = {}
+                if summary_data_json:
+                    try:
+                        summary_data = json.loads(summary_data_json)
+                    except json.JSONDecodeError:
+                        pass
+                
+                # Calculate new values
+                heart_rate_count += 1
+                
+                # Calculate new average
+                if avg_heart_rate > 0:
+                    avg_heart_rate = ((avg_heart_rate * (heart_rate_count - 1)) + bpm) / heart_rate_count
+                else:
+                    avg_heart_rate = bpm
+                
+                # Update min/max
+                if min_heart_rate == 0 or bpm < min_heart_rate:
+                    min_heart_rate = bpm
+                
+                if bpm > max_heart_rate:
+                    max_heart_rate = bpm
+                
+                # Update summary data
+                summary_data["avg_heart_rate"] = avg_heart_rate
+                summary_data["min_heart_rate"] = min_heart_rate
+                summary_data["max_heart_rate"] = max_heart_rate
+                summary_data["heart_rate_count"] = heart_rate_count
+                
+                # Update database
+                cursor.execute(
+                    '''
+                    UPDATE daily_summaries
+                    SET summary_data = ?
+                    WHERE date = ?
+                    ''',
+                    (json.dumps(summary_data), date_str)
+                )
+            else:
+                # Create new summary with heart rate data
+                summary_data = {
+                    "avg_heart_rate": bpm,
+                    "min_heart_rate": bpm,
+                    "max_heart_rate": bpm,
+                    "heart_rate_count": 1
+                }
+                
+                cursor.execute(
+                    '''
+                    INSERT INTO daily_summaries (date, summary_data)
+                    VALUES (?, ?)
+                    ''',
+                    (date_str, json.dumps(summary_data))
+                )
+            
+            self.conn.commit()
+            
+        except sqlite3.Error as e:
+            logger.error(f"Error updating daily summary for heart rate: {str(e)}")
+            self.conn.rollback()
+    
     def get_standing_events(
         self, 
         start_date: Optional[date] = None, 
@@ -414,6 +556,65 @@ class Database:
             
         except sqlite3.Error as e:
             logger.error(f"Error getting standing events: {str(e)}")
+            return []
+    
+    def get_heart_rate_events(
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> List[Dict[str, Any]]:
+        """Get heart rate events within a date range.
+        
+        Args:
+            start_date: Start date (inclusive)
+            end_date: End date (inclusive)
+            
+        Returns:
+            List of heart rate events as dictionaries
+        """
+        self._ensure_connection()
+        
+        try:
+            cursor = self.conn.cursor()
+            
+            query = "SELECT id, timestamp, bpm, confidence FROM heart_rate_events"
+            params = []
+            
+            # Add date filters if provided
+            if start_date or end_date:
+                conditions = []
+                
+                if start_date:
+                    start_timestamp = datetime.combine(start_date, datetime.min.time()).timestamp()
+                    conditions.append("timestamp >= ?")
+                    params.append(start_timestamp)
+                
+                if end_date:
+                    # Add one day to include the entire end date
+                    end_timestamp = datetime.combine(end_date + timedelta(days=1), datetime.min.time()).timestamp()
+                    conditions.append("timestamp < ?")
+                    params.append(end_timestamp)
+                
+                query += " WHERE " + " AND ".join(conditions)
+            
+            query += " ORDER BY timestamp DESC"
+            
+            cursor.execute(query, params)
+            
+            events = []
+            for row in cursor.fetchall():
+                events.append({
+                    "id": row[0],
+                    "timestamp": row[1],
+                    "bpm": row[2],
+                    "confidence": row[3],
+                    "datetime": datetime.fromtimestamp(row[1]).strftime('%Y-%m-%d %H:%M:%S')
+                })
+            
+            return events
+            
+        except sqlite3.Error as e:
+            logger.error(f"Error getting heart rate events: {str(e)}")
             return []
     
     def get_drinking_events(

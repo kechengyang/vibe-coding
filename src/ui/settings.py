@@ -17,6 +17,7 @@ from PyQt6.QtGui import QFont
 from ..data.models import UserSettings
 from ..utils.config import get_config
 from ..utils.notifications import get_notification_manager
+from ..vision.heart_rate_detection import HeartRateDetector
 
 logger = logging.getLogger("employee_health_monitor.ui.settings")
 
@@ -99,6 +100,7 @@ class SettingsWidget(QWidget):
         # Add settings groups
         self.add_general_settings()
         self.add_health_goal_settings()
+        self.add_heart_rate_settings()
         self.add_notification_settings()
         self.add_camera_settings()
         
@@ -180,6 +182,63 @@ class SettingsWidget(QWidget):
         drinking_layout.addWidget(self.drinking_goal_spinbox)
         drinking_layout.addStretch()
         form_layout.addRow("Daily water intake goal:", drinking_layout)
+        
+        self.content_layout.addWidget(group_box)
+    
+    def add_heart_rate_settings(self) -> None:
+        """Add heart rate settings group."""
+        group_box = QGroupBox("Heart Rate Settings")
+        group_box.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                margin-top: 1ex;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        
+        form_layout = QFormLayout(group_box)
+        form_layout.setContentsMargins(15, 20, 15, 15)
+        form_layout.setSpacing(15)
+        
+        # Minimum heart rate
+        min_hr_layout = QHBoxLayout()
+        self.min_heart_rate_spinbox = QSpinBox()
+        self.min_heart_rate_spinbox.setRange(40, 100)
+        self.min_heart_rate_spinbox.setSingleStep(1)
+        self.min_heart_rate_spinbox.setSuffix(" BPM")
+        self.min_heart_rate_spinbox.setMinimumWidth(120)
+        min_hr_layout.addWidget(self.min_heart_rate_spinbox)
+        min_hr_layout.addStretch()
+        form_layout.addRow("Minimum healthy heart rate:", min_hr_layout)
+        
+        # Maximum heart rate
+        max_hr_layout = QHBoxLayout()
+        self.max_heart_rate_spinbox = QSpinBox()
+        self.max_heart_rate_spinbox.setRange(100, 200)
+        self.max_heart_rate_spinbox.setSingleStep(1)
+        self.max_heart_rate_spinbox.setSuffix(" BPM")
+        self.max_heart_rate_spinbox.setMinimumWidth(120)
+        max_hr_layout.addWidget(self.max_heart_rate_spinbox)
+        max_hr_layout.addStretch()
+        form_layout.addRow("Maximum healthy heart rate:", max_hr_layout)
+        
+        # Heart rate detection interval
+        update_interval_layout = QHBoxLayout()
+        self.heart_rate_update_interval_spinbox = QSpinBox()
+        self.heart_rate_update_interval_spinbox.setRange(10, 60)
+        self.heart_rate_update_interval_spinbox.setSingleStep(5)
+        self.heart_rate_update_interval_spinbox.setSuffix(" frames")
+        self.heart_rate_update_interval_spinbox.setMinimumWidth(120)
+        update_interval_layout.addWidget(self.heart_rate_update_interval_spinbox)
+        update_interval_layout.addStretch()
+        form_layout.addRow("Update heart rate every:", update_interval_layout)
         
         self.content_layout.addWidget(group_box)
     
@@ -327,6 +386,17 @@ class SettingsWidget(QWidget):
                 self.user_settings.drinking_goal_count
             )
             
+            # Heart rate settings
+            self.min_heart_rate_spinbox.setValue(
+                self.user_settings.heart_rate_min
+            )
+            self.max_heart_rate_spinbox.setValue(
+                self.user_settings.heart_rate_max
+            )
+            # Get heart rate update interval from config
+            heart_rate_update_interval = self.config.get("detection.heart_rate.update_interval", 30)
+            self.heart_rate_update_interval_spinbox.setValue(heart_rate_update_interval)
+            
             # Notification settings
             self.notifications_enabled_checkbox.setChecked(
                 self.user_settings.notification_enabled
@@ -355,10 +425,15 @@ class SettingsWidget(QWidget):
             self.user_settings.start_monitoring_on_launch = self.start_monitoring_checkbox.isChecked()
             self.user_settings.standing_goal_minutes = self.standing_goal_spinbox.value()
             self.user_settings.drinking_goal_count = self.drinking_goal_spinbox.value()
+            self.user_settings.heart_rate_min = self.min_heart_rate_spinbox.value()
+            self.user_settings.heart_rate_max = self.max_heart_rate_spinbox.value()
             self.user_settings.notification_enabled = self.notifications_enabled_checkbox.isChecked()
             self.user_settings.standing_reminder_minutes = self.standing_reminder_spinbox.value()
             self.user_settings.drinking_reminder_minutes = self.drinking_reminder_spinbox.value()
             self.user_settings.camera_id = self.camera_combo.currentIndex()
+            
+            # Update heart rate detection settings
+            self.config.set("detection.heart_rate.update_interval", self.heart_rate_update_interval_spinbox.value())
             
             # Update configuration
             self.config.set_user_settings(self.user_settings)
