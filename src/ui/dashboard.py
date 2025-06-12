@@ -65,7 +65,8 @@ class StatCard(QFrame):
             StatCard {
                 background-color: #ffffff;
                 border-radius: 12px;
-                border: 1px solid #e9ecef;
+                border: 2px solid #0d6efd;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             }
         """)
         
@@ -76,18 +77,18 @@ class StatCard(QFrame):
         
         # Create title label
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #6c757d; font-size: 14px; font-weight: 500;")
+        title_label.setStyleSheet("color: #0d6efd; font-size: 14px; font-weight: bold;")
         layout.addWidget(title_label)
         
         # Create value label
         self.value_label = QLabel(value)
-        self.value_label.setStyleSheet("color: #212529; font-size: 28px; font-weight: bold;")
+        self.value_label.setStyleSheet("color: #212529; font-size: 32px; font-weight: bold;")
         layout.addWidget(self.value_label)
         
         # Create subtitle label if provided
         if subtitle:
             subtitle_label = QLabel(subtitle)
-            subtitle_label.setStyleSheet("color: #6c757d; font-size: 12px;")
+            subtitle_label.setStyleSheet("color: #495057; font-size: 12px; background-color: #e9ecef; padding: 2px 4px; border-radius: 2px;")
             layout.addWidget(subtitle_label)
         
         # Set size policy
@@ -122,7 +123,8 @@ class RecommendationCard(QFrame):
             RecommendationCard {
                 background-color: #ffffff;
                 border-radius: 12px;
-                border: 1px solid #e9ecef;
+                border: 2px solid #198754;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             }
         """)
         
@@ -136,7 +138,7 @@ class RecommendationCard(QFrame):
         title_layout.setSpacing(8)
         
         title_label = QLabel("Recommendations")
-        title_label.setStyleSheet("color: #212529; font-size: 18px; font-weight: bold;")
+        title_label.setStyleSheet("color: #198754; font-size: 18px; font-weight: bold;")
         title_layout.addWidget(title_label)
         
         self.layout.addLayout(title_layout)
@@ -169,7 +171,7 @@ class RecommendationCard(QFrame):
         for recommendation in recommendations:
             label = QLabel(f"• {recommendation}")
             label.setWordWrap(True)
-            label.setStyleSheet("color: #495057; font-size: 14px; margin-top: 8px; line-height: 1.4;")
+            label.setStyleSheet("color: #212529; font-size: 14px; margin-top: 8px; line-height: 1.4; background-color: #f8f9fa; padding: 8px; border-radius: 4px; border-left: 4px solid #198754;")
             self.recommendations_layout.addWidget(label)
 
 
@@ -215,33 +217,40 @@ class Dashboard(QWidget):
         
         # Title
         title_label = QLabel("Health Dashboard")
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #212529;")
+        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #0d6efd;")
         header_layout.addWidget(title_label)
         
         # Time period selector
         header_layout.addStretch()
         period_label = QLabel("Time Period:")
-        period_label.setStyleSheet("font-size: 14px; color: #6c757d;")
+        period_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #495057;")
         header_layout.addWidget(period_label)
         
         self.period_combo = QComboBox()
         self.period_combo.setStyleSheet("""
             QComboBox {
-                border: 1px solid #ced4da;
+                background-color: #ffffff;
+                border: 2px solid #0d6efd;
                 border-radius: 4px;
                 padding: 5px 10px;
-                background-color: white;
-                min-width: 120px;
+                min-width: 150px;
+                color: #212529;
+                font-weight: bold;
+            }
+            QComboBox:hover {
+                border-color: #0b5ed7;
             }
             QComboBox::drop-down {
-                border: none;
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
                 width: 20px;
+                border-left: 1px solid #0d6efd;
             }
             QComboBox QAbstractItemView {
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                background-color: white;
-                selection-background-color: #007bff;
+                background-color: #ffffff;
+                border: 2px solid #0d6efd;
+                selection-background-color: #0d6efd;
+                selection-color: white;
             }
         """)
         self.period_combo.addItems(["Today", "Yesterday", "Last 7 Days", "Last 30 Days"])
@@ -255,8 +264,13 @@ class Dashboard(QWidget):
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setStyleSheet("""
             QSplitter::handle {
-                background-color: #e9ecef;
-                width: 1px;
+                background-color: #0d6efd;
+                width: 2px;
+                margin: 5px 5px;
+            }
+            QSplitter::handle:hover {
+                background-color: #0b5ed7;
+                width: 3px;
             }
         """)
         
@@ -411,30 +425,104 @@ class Dashboard(QWidget):
             
             # Update standing time chart
             self.standing_time_chart.axes.clear()
+            
+            # Set background color for better contrast
+            self.standing_time_chart.fig.patch.set_facecolor('#f8f9fa')
+            self.standing_time_chart.axes.set_facecolor('#f8f9fa')
+            
             dates = [d.split('-')[2] for d in standing_trend['dates']]  # Just day part
             values = [v / 60 for v in standing_trend['values']]  # Convert to minutes
             
-            self.standing_time_chart.axes.bar(dates, values, color='#4e79a7')
-            self.standing_time_chart.axes.set_title('Standing Time (minutes)')
-            self.standing_time_chart.axes.set_xlabel('Day')
-            self.standing_time_chart.axes.set_ylabel('Minutes')
+            # Create bars with better styling
+            bars = self.standing_time_chart.axes.bar(
+                dates, 
+                values, 
+                color='#0d6efd', 
+                edgecolor='white',
+                linewidth=1,
+                alpha=0.8
+            )
+            
+            # Add value labels on top of bars
+            for bar in bars:
+                height = bar.get_height()
+                if height > 0:
+                    self.standing_time_chart.axes.text(
+                        bar.get_x() + bar.get_width()/2.,
+                        height + 1,
+                        f'{int(height)}',
+                        ha='center',
+                        va='bottom',
+                        fontsize=9,
+                        fontweight='bold',
+                        color='#495057'
+                    )
+            
+            # Improved styling
+            self.standing_time_chart.axes.set_title('Standing Time (minutes)', fontsize=12, fontweight='bold', color='#0d6efd')
+            self.standing_time_chart.axes.set_xlabel('Day', fontsize=10, fontweight='bold', color='#495057')
+            self.standing_time_chart.axes.set_ylabel('Minutes', fontsize=10, fontweight='bold', color='#495057')
+            self.standing_time_chart.axes.grid(True, linestyle='--', alpha=0.7, color='#dee2e6')
+            self.standing_time_chart.axes.tick_params(axis='both', colors='#495057')
+            self.standing_time_chart.axes.spines['top'].set_visible(False)
+            self.standing_time_chart.axes.spines['right'].set_visible(False)
+            
             self.standing_time_chart.fig.tight_layout()
             self.standing_time_chart.draw()
             
             # Update drinking count chart
             self.drinking_count_chart.axes.clear()
+            
+            # Set background color for better contrast
+            self.drinking_count_chart.fig.patch.set_facecolor('#f8f9fa')
+            self.drinking_count_chart.axes.set_facecolor('#f8f9fa')
+            
             dates = [d.split('-')[2] for d in drinking_trend['dates']]  # Just day part
             values = drinking_trend['values']
             
-            self.drinking_count_chart.axes.bar(dates, values, color='#76b7b2')
-            self.drinking_count_chart.axes.set_title('Water Intake (count)')
-            self.drinking_count_chart.axes.set_xlabel('Day')
-            self.drinking_count_chart.axes.set_ylabel('Count')
+            # Create bars with better styling
+            bars = self.drinking_count_chart.axes.bar(
+                dates, 
+                values, 
+                color='#198754', 
+                edgecolor='white',
+                linewidth=1,
+                alpha=0.8
+            )
+            
+            # Add value labels on top of bars
+            for bar in bars:
+                height = bar.get_height()
+                if height > 0:
+                    self.drinking_count_chart.axes.text(
+                        bar.get_x() + bar.get_width()/2.,
+                        height + 0.1,
+                        f'{int(height)}',
+                        ha='center',
+                        va='bottom',
+                        fontsize=9,
+                        fontweight='bold',
+                        color='#495057'
+                    )
+            
+            # Improved styling
+            self.drinking_count_chart.axes.set_title('Water Intake (count)', fontsize=12, fontweight='bold', color='#198754')
+            self.drinking_count_chart.axes.set_xlabel('Day', fontsize=10, fontweight='bold', color='#495057')
+            self.drinking_count_chart.axes.set_ylabel('Count', fontsize=10, fontweight='bold', color='#495057')
+            self.drinking_count_chart.axes.grid(True, linestyle='--', alpha=0.7, color='#dee2e6')
+            self.drinking_count_chart.axes.tick_params(axis='both', colors='#495057')
+            self.drinking_count_chart.axes.spines['top'].set_visible(False)
+            self.drinking_count_chart.axes.spines['right'].set_visible(False)
+            
             self.drinking_count_chart.fig.tight_layout()
             self.drinking_count_chart.draw()
             
             # Update health score chart
             self.health_score_chart.axes.clear()
+            
+            # Set background color for better contrast
+            self.health_score_chart.fig.patch.set_facecolor('#f8f9fa')
+            self.health_score_chart.axes.set_facecolor('#f8f9fa')
             
             # Get health scores for date range
             scores = []
@@ -447,11 +535,47 @@ class Dashboard(QWidget):
                 dates.append(current_date.strftime('%d'))
                 current_date += timedelta(days=1)
             
-            self.health_score_chart.axes.plot(dates, scores, marker='o', linestyle='-', color='#f28e2c')
-            self.health_score_chart.axes.set_title('Health Score Trend')
-            self.health_score_chart.axes.set_xlabel('Day')
-            self.health_score_chart.axes.set_ylabel('Score (%)')
+            # Plot with improved styling
+            line = self.health_score_chart.axes.plot(
+                dates, 
+                scores, 
+                marker='o', 
+                linestyle='-', 
+                color='#dc3545', 
+                linewidth=2.5,
+                markersize=8
+            )[0]
+            
+            # Add value labels on data points
+            for i, (x, y) in enumerate(zip(dates, scores)):
+                self.health_score_chart.axes.text(
+                    x, y + 3,
+                    f'{int(y)}%',
+                    ha='center',
+                    va='bottom',
+                    fontsize=9,
+                    fontweight='bold',
+                    color='#495057'
+                )
+            
+            # Fill area under the line
+            self.health_score_chart.axes.fill_between(
+                dates, 
+                scores, 
+                alpha=0.2, 
+                color='#dc3545'
+            )
+            
+            # Improved styling
+            self.health_score_chart.axes.set_title('Health Score Trend', fontsize=14, fontweight='bold', color='#dc3545')
+            self.health_score_chart.axes.set_xlabel('Day', fontsize=10, fontweight='bold', color='#495057')
+            self.health_score_chart.axes.set_ylabel('Score (%)', fontsize=10, fontweight='bold', color='#495057')
             self.health_score_chart.axes.set_ylim(0, 100)
+            self.health_score_chart.axes.grid(True, linestyle='--', alpha=0.7, color='#dee2e6')
+            self.health_score_chart.axes.tick_params(axis='both', colors='#495057')
+            self.health_score_chart.axes.spines['top'].set_visible(False)
+            self.health_score_chart.axes.spines['right'].set_visible(False)
+            
             self.health_score_chart.fig.tight_layout()
             self.health_score_chart.draw()
             

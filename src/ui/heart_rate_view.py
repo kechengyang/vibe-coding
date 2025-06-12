@@ -62,35 +62,41 @@ class HeartRateCard(QFrame):
         self.setFrameShadow(QFrame.Shadow.Raised)
         self.setStyleSheet("""
             HeartRateCard {
-                background-color: #f8f9fa;
+                background-color: #ffffff;
                 border-radius: 8px;
-                border: 1px solid #e9ecef;
+                border: 2px solid #0d6efd;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             }
         """)
         
         # Create layout
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setContentsMargins(20, 15, 20, 15)
+        layout.setSpacing(5)
         
         # Create title label
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #6c757d; font-size: 14px;")
+        title_label.setStyleSheet("color: #0d6efd; font-size: 14px; font-weight: bold;")
         layout.addWidget(title_label)
         
         # Create value label
         self.value_label = QLabel(value)
         self.value_label.setStyleSheet("color: #212529; font-size: 24px; font-weight: bold;")
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.value_label.setWordWrap(True)
         layout.addWidget(self.value_label)
         
         # Create subtitle label if provided
         if subtitle:
             subtitle_label = QLabel(subtitle)
-            subtitle_label.setStyleSheet("color: #6c757d; font-size: 12px;")
+            subtitle_label.setStyleSheet("color: #495057; font-size: 12px; background-color: #e9ecef; padding: 2px 4px; border-radius: 2px;")
+            subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(subtitle_label)
         
         # Set size policy
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.setMinimumHeight(100)
+        self.setMinimumHeight(120)
+        self.setMinimumWidth(150)
     
     def update_value(self, value: str) -> None:
         """Update the displayed value.
@@ -140,19 +146,45 @@ class HeartRateView(QWidget):
         
         # Title
         title_label = QLabel("Heart Rate Monitor")
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #212529;")
+        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #0d6efd;")
         header_layout.addWidget(title_label)
         
         # Time period selector
         header_layout.addStretch()
         period_label = QLabel("Time Period:")
-        period_label.setStyleSheet("font-size: 14px; color: #6c757d;")
+        period_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #495057;")
         header_layout.addWidget(period_label)
         
         self.period_combo = QComboBox()
         self.period_combo.addItems(["Today", "Yesterday", "Last 7 Days", "Last 30 Days"])
         self.period_combo.setCurrentIndex(0)
         self.period_combo.currentIndexChanged.connect(self.on_period_changed)
+        self.period_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #ffffff;
+                border: 2px solid #0d6efd;
+                border-radius: 4px;
+                padding: 5px;
+                min-width: 150px;
+                color: #212529;
+                font-weight: bold;
+            }
+            QComboBox:hover {
+                border-color: #0b5ed7;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: 1px solid #0d6efd;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                border: 2px solid #0d6efd;
+                selection-background-color: #0d6efd;
+                selection-color: white;
+            }
+        """)
         header_layout.addWidget(self.period_combo)
         
         main_layout.addLayout(header_layout)
@@ -178,12 +210,52 @@ class HeartRateView(QWidget):
         charts_layout = QVBoxLayout()
         
         # Heart rate trend chart
+        trend_frame = QFrame()
+        trend_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        trend_frame.setFrameShadow(QFrame.Shadow.Raised)
+        trend_frame.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border-radius: 8px;
+                border: 2px solid #0d6efd;
+                margin: 5px;
+            }
+        """)
+        trend_layout = QVBoxLayout(trend_frame)
+        
+        trend_title = QLabel("Heart Rate Trend")
+        trend_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #0d6efd; margin-bottom: 10px;")
+        trend_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        trend_layout.addWidget(trend_title)
+        
         self.trend_chart = MplCanvas(width=10, height=4)
-        charts_layout.addWidget(self.trend_chart)
+        trend_layout.addWidget(self.trend_chart)
+        
+        charts_layout.addWidget(trend_frame)
         
         # Heart rate distribution chart
+        dist_frame = QFrame()
+        dist_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        dist_frame.setFrameShadow(QFrame.Shadow.Raised)
+        dist_frame.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border-radius: 8px;
+                border: 2px solid #0d6efd;
+                margin: 5px;
+            }
+        """)
+        dist_layout = QVBoxLayout(dist_frame)
+        
+        dist_title = QLabel("Heart Rate Distribution")
+        dist_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #0d6efd; margin-bottom: 10px;")
+        dist_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        dist_layout.addWidget(dist_title)
+        
         self.distribution_chart = MplCanvas(width=10, height=4)
-        charts_layout.addWidget(self.distribution_chart)
+        dist_layout.addWidget(self.distribution_chart)
+        
+        charts_layout.addWidget(dist_frame)
         
         main_layout.addLayout(charts_layout)
         
@@ -252,6 +324,10 @@ class HeartRateView(QWidget):
             # Update trend chart
             self.trend_chart.axes.clear()
             
+            # Set background color for better contrast
+            self.trend_chart.fig.patch.set_facecolor('#f8f9fa')
+            self.trend_chart.axes.set_facecolor('#f8f9fa')
+            
             if heart_rate_events:
                 # Sort events by timestamp (oldest first)
                 sorted_events = sorted(heart_rate_events, key=lambda x: x["timestamp"])
@@ -261,8 +337,8 @@ class HeartRateView(QWidget):
                 bpm_values = [event["bpm"] for event in sorted_events]
                 confidence_values = [event["confidence"] for event in sorted_events]
                 
-                # Plot heart rate trend
-                self.trend_chart.axes.plot(timestamps, bpm_values, marker='o', linestyle='-', color='#e63946')
+                # Plot heart rate trend with thicker line for better visibility
+                self.trend_chart.axes.plot(timestamps, bpm_values, marker='o', linestyle='-', color='#0d6efd', linewidth=2.5)
                 
                 # Set y-axis range with some padding
                 min_bpm = min(bpm_values) if bpm_values else 0
@@ -273,54 +349,74 @@ class HeartRateView(QWidget):
                 # Format x-axis to show time
                 self.trend_chart.fig.autofmt_xdate()
                 
-                # Add confidence as alpha to scatter points
+                # Add confidence as alpha to scatter points with larger markers
                 for i, (timestamp, bpm, confidence) in enumerate(zip(timestamps, bpm_values, confidence_values)):
                     self.trend_chart.axes.scatter(
                         timestamp, bpm, 
-                        alpha=confidence, 
-                        color='#e63946', 
-                        s=50
+                        alpha=max(0.5, confidence), # Minimum alpha of 0.5 for better visibility
+                        color='#0d6efd', 
+                        s=80,
+                        edgecolor='white',
+                        linewidth=1
                     )
             
-            self.trend_chart.axes.set_title('Heart Rate Trend')
-            self.trend_chart.axes.set_xlabel('Time')
-            self.trend_chart.axes.set_ylabel('BPM')
-            self.trend_chart.axes.grid(True, linestyle='--', alpha=0.7)
+            # Improved styling for better readability
+            self.trend_chart.axes.set_xlabel('Time', fontsize=12, fontweight='bold', color='#495057')
+            self.trend_chart.axes.set_ylabel('BPM', fontsize=12, fontweight='bold', color='#495057')
+            self.trend_chart.axes.grid(True, linestyle='--', alpha=0.7, color='#dee2e6')
+            self.trend_chart.axes.tick_params(axis='both', colors='#495057', labelsize=10)
+            
+            # Add a light background to the plot area for better contrast
+            self.trend_chart.axes.set_axisbelow(True)
+            
             self.trend_chart.fig.tight_layout()
             self.trend_chart.draw()
             
             # Update distribution chart
             self.distribution_chart.axes.clear()
             
+            # Set background color for better contrast
+            self.distribution_chart.fig.patch.set_facecolor('#f8f9fa')
+            self.distribution_chart.axes.set_facecolor('#f8f9fa')
+            
             if heart_rate_events:
                 # Extract BPM values
                 bpm_values = [event["bpm"] for event in heart_rate_events]
                 
-                # Create histogram
+                # Create histogram with more vibrant colors
                 self.distribution_chart.axes.hist(
                     bpm_values, 
                     bins=20, 
-                    color='#457b9d', 
+                    color='#6610f2', 
                     alpha=0.7, 
-                    edgecolor='black'
+                    edgecolor='white',
+                    linewidth=1.5
                 )
                 
-                # Add vertical lines for min, max, and average
+                # Add vertical lines for min, max, and average with more distinct colors
                 avg_bpm = np.mean(bpm_values)
                 min_bpm = min(bpm_values)
                 max_bpm = max(bpm_values)
                 
-                self.distribution_chart.axes.axvline(avg_bpm, color='#e63946', linestyle='--', linewidth=2, label=f'Avg: {avg_bpm:.1f}')
-                self.distribution_chart.axes.axvline(min_bpm, color='#2a9d8f', linestyle=':', linewidth=2, label=f'Min: {min_bpm:.1f}')
-                self.distribution_chart.axes.axvline(max_bpm, color='#f4a261', linestyle=':', linewidth=2, label=f'Max: {max_bpm:.1f}')
+                self.distribution_chart.axes.axvline(avg_bpm, color='#dc3545', linestyle='-', linewidth=3, label=f'Avg: {avg_bpm:.1f} BPM')
+                self.distribution_chart.axes.axvline(min_bpm, color='#198754', linestyle='-', linewidth=3, label=f'Min: {min_bpm:.1f} BPM')
+                self.distribution_chart.axes.axvline(max_bpm, color='#fd7e14', linestyle='-', linewidth=3, label=f'Max: {max_bpm:.1f} BPM')
                 
-                # Add legend
-                self.distribution_chart.axes.legend()
+                # Add legend with better styling
+                legend = self.distribution_chart.axes.legend(loc='upper right', frameon=True, fancybox=True, shadow=True)
+                legend.get_frame().set_facecolor('#ffffff')
+                legend.get_frame().set_edgecolor('#0d6efd')
+                legend.get_frame().set_linewidth(2)
             
-            self.distribution_chart.axes.set_title('Heart Rate Distribution')
-            self.distribution_chart.axes.set_xlabel('BPM')
-            self.distribution_chart.axes.set_ylabel('Frequency')
-            self.distribution_chart.axes.grid(True, linestyle='--', alpha=0.7)
+            # Improved styling for better readability
+            self.distribution_chart.axes.set_xlabel('BPM', fontsize=12, fontweight='bold', color='#495057')
+            self.distribution_chart.axes.set_ylabel('Frequency', fontsize=12, fontweight='bold', color='#495057')
+            self.distribution_chart.axes.grid(True, linestyle='--', alpha=0.7, color='#dee2e6')
+            self.distribution_chart.axes.tick_params(axis='both', colors='#495057', labelsize=10)
+            
+            # Add a light background to the plot area for better contrast
+            self.distribution_chart.axes.set_axisbelow(True)
+            
             self.distribution_chart.fig.tight_layout()
             self.distribution_chart.draw()
             

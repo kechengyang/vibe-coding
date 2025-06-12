@@ -67,18 +67,21 @@ class SettingsWidget(QWidget):
         self.save_button = QPushButton("Save Settings")
         self.save_button.setStyleSheet("""
             QPushButton {
-                background-color: #007bff;
+                background-color: #0d6efd;
                 color: white;
-                border: none;
+                border: 2px solid #0a58ca;
                 border-radius: 4px;
-                padding: 8px 16px;
+                padding: 10px 20px;
                 font-weight: bold;
+                font-size: 14px;
             }
             QPushButton:hover {
-                background-color: #0069d9;
+                background-color: #0b5ed7;
+                border-color: #0a53be;
             }
             QPushButton:pressed {
-                background-color: #0062cc;
+                background-color: #0a58ca;
+                border-color: #0a4fb8;
             }
         """)
         self.save_button.clicked.connect(self.save_settings)
@@ -93,6 +96,64 @@ class SettingsWidget(QWidget):
         
         # Create content widget
         content_widget = QWidget()
+        content_widget.setStyleSheet("""
+            QWidget {
+                background-color: #ffffff;
+            }
+            QSpinBox, QComboBox, QCheckBox {
+                background-color: #ffffff;
+                color: #212529;
+                border: 2px solid #ced4da;
+                border-radius: 4px;
+                padding: 5px;
+                min-height: 25px;
+                font-weight: bold;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                background-color: #e9ecef;
+                border: 1px solid #ced4da;
+                border-radius: 2px;
+            }
+            QSpinBox::up-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iIzIxMjUyOSIgY2xhc3M9ImJpIGJpLWNoZXZyb24tdXAiIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNy42NDYgNC42NDZhLjUuNSAwIDAgMSAuNzA4IDBsNiA2YS41LjUgMCAwIDEtLjcwOC43MDhMOCA1LjcwN2wtNS42NDYgNS42NDdhLjUuNSAwIDAgMS0uNzA4LS43MDhsNi02eiIvPjwvc3ZnPg==);
+                width: 12px;
+                height: 12px;
+            }
+            QSpinBox::down-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iIzIxMjUyOSIgY2xhc3M9ImJpIGJpLWNoZXZyb24tZG93biIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xLjY0NiA0LjY0NmEuNS41IDAgMCAxIC43MDggMEw4IDEwLjI5M2w1LjY0Ni01LjY0N2EuNS41IDAgMCAxIC43MDguNzA4bC02IDZhLjUuNSAwIDAgMS0uNzA4IDBsLTYtNmEuNS41IDAgMCAxIDAtLjcwOHoiLz48L3N2Zz4=);
+                width: 12px;
+                height: 12px;
+            }
+            QSpinBox:hover, QComboBox:hover {
+                border-color: #86b7fe;
+                background-color: #f8f9fa;
+            }
+            QSpinBox:focus, QComboBox:focus {
+                border-color: #0d6efd;
+                border-width: 2px;
+                background-color: #f8f9fa;
+            }
+            QCheckBox {
+                spacing: 8px;
+                color: #212529;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 2px solid #6c757d;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #0d6efd;
+                border-color: #0d6efd;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #0d6efd;
+            }
+            QLabel {
+                color: #212529;
+            }
+        """)
         self.content_layout = QVBoxLayout(content_widget)
         self.content_layout.setContentsMargins(0, 0, 0, 0)
         self.content_layout.setSpacing(20)
@@ -118,15 +179,19 @@ class SettingsWidget(QWidget):
         group_box.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                border: 2px solid #0d6efd;
+                border-radius: 6px;
+                margin-top: 1.5ex;
+                padding-top: 12px;
+                background-color: #f8f9fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 5px;
+                padding: 0 8px;
+                background-color: #e9ecef;
+                color: #0d6efd;
+                font-size: 14px;
             }
         """)
         
@@ -146,15 +211,19 @@ class SettingsWidget(QWidget):
         group_box.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                border: 2px solid #0d6efd;
+                border-radius: 6px;
+                margin-top: 1.5ex;
+                padding-top: 12px;
+                background-color: #f8f9fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 5px;
+                padding: 0 8px;
+                background-color: #e9ecef;
+                color: #0d6efd;
+                font-size: 14px;
             }
         """)
         
@@ -192,15 +261,19 @@ class SettingsWidget(QWidget):
         group_box.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                border: 2px solid #0d6efd;
+                border-radius: 6px;
+                margin-top: 1.5ex;
+                padding-top: 12px;
+                background-color: #f8f9fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 5px;
+                padding: 0 8px;
+                background-color: #e9ecef;
+                color: #0d6efd;
+                font-size: 14px;
             }
         """)
         
@@ -249,15 +322,19 @@ class SettingsWidget(QWidget):
         group_box.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                border: 2px solid #0d6efd;
+                border-radius: 6px;
+                margin-top: 1.5ex;
+                padding-top: 12px;
+                background-color: #f8f9fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 5px;
+                padding: 0 8px;
+                background-color: #e9ecef;
+                color: #0d6efd;
+                font-size: 14px;
             }
         """)
         
@@ -296,17 +373,20 @@ class SettingsWidget(QWidget):
         self.test_notification_button = QPushButton("Test Notification")
         self.test_notification_button.setStyleSheet("""
             QPushButton {
-                background-color: #6c757d;
+                background-color: #6610f2;
                 color: white;
-                border: none;
+                border: 2px solid #520dc2;
                 border-radius: 4px;
-                padding: 6px 12px;
+                padding: 8px 16px;
+                font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #5a6268;
+                background-color: #5b09eb;
+                border-color: #4709b7;
             }
             QPushButton:pressed {
-                background-color: #545b62;
+                background-color: #520dc2;
+                border-color: #4209a0;
             }
         """)
         self.test_notification_button.clicked.connect(self.test_notification)
@@ -322,15 +402,19 @@ class SettingsWidget(QWidget):
         group_box.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                border: 2px solid #0d6efd;
+                border-radius: 6px;
+                margin-top: 1.5ex;
+                padding-top: 12px;
+                background-color: #f8f9fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 5px;
+                padding: 0 8px;
+                background-color: #e9ecef;
+                color: #0d6efd;
+                font-size: 14px;
             }
         """)
         
@@ -351,17 +435,20 @@ class SettingsWidget(QWidget):
         self.test_camera_button = QPushButton("Test Camera")
         self.test_camera_button.setStyleSheet("""
             QPushButton {
-                background-color: #6c757d;
+                background-color: #fd7e14;
                 color: white;
-                border: none;
+                border: 2px solid #d56908;
                 border-radius: 4px;
-                padding: 6px 12px;
+                padding: 8px 16px;
+                font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #5a6268;
+                background-color: #e96b02;
+                border-color: #c26006;
             }
             QPushButton:pressed {
-                background-color: #545b62;
+                background-color: #d56908;
+                border-color: #b15905;
             }
         """)
         self.test_camera_button.clicked.connect(self.test_camera)
@@ -377,15 +464,19 @@ class SettingsWidget(QWidget):
         group_box.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
+                border: 2px solid #0d6efd;
+                border-radius: 6px;
+                margin-top: 1.5ex;
+                padding-top: 12px;
+                background-color: #f8f9fa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 5px;
+                padding: 0 8px;
+                background-color: #e9ecef;
+                color: #0d6efd;
+                font-size: 14px;
             }
         """)
         
@@ -404,7 +495,7 @@ class SettingsWidget(QWidget):
         
         # Add a help label for posture model
         posture_help_label = QLabel("Higher accuracy models provide better detection but require more processing power.")
-        posture_help_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        posture_help_label.setStyleSheet("color: #495057; font-size: 12px; background-color: #e9ecef; padding: 4px; border-radius: 3px;")
         posture_help_label.setWordWrap(True)
         form_layout.addRow("", posture_help_label)
         
@@ -419,7 +510,7 @@ class SettingsWidget(QWidget):
         
         # Add a help label for drinking model
         drinking_help_label = QLabel("Higher accuracy models provide better detection but require more processing power.")
-        drinking_help_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        drinking_help_label.setStyleSheet("color: #495057; font-size: 12px; background-color: #e9ecef; padding: 4px; border-radius: 3px;")
         drinking_help_label.setWordWrap(True)
         form_layout.addRow("", drinking_help_label)
         

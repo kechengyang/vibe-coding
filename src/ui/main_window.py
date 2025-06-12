@@ -331,36 +331,60 @@ class MainWindowWidget(QMainWindow):
         self.setMinimumSize(1200, 800)
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #f8f9fa;
+                background-color: #f0f2f5;
             }
             QStatusBar {
                 background-color: #ffffff;
-                border-top: 1px solid #e9ecef;
+                border-top: 2px solid #d0d5dd;
                 padding: 5px;
+                font-weight: bold;
             }
             QToolBar {
-                background-color: #ffffff;
-                border-bottom: 1px solid #e9ecef;
-                spacing: 10px;
-                padding: 5px;
+                background-color: #e9ecef;
+                border-bottom: 2px solid #d0d5dd;
+                spacing: 15px;
+                padding: 8px;
+            }
+            QToolBar QToolButton {
+                background-color: #0d6efd;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px;
+                margin: 2px;
+            }
+            QToolBar QToolButton:hover {
+                background-color: #0b5ed7;
+            }
+            QToolBar QToolButton:pressed {
+                background-color: #0a58ca;
+            }
+            QToolBar QToolButton:disabled {
+                background-color: #6c757d;
             }
             QTabWidget::pane {
-                border: none;
-                background-color: #f8f9fa;
+                border: 1px solid #d0d5dd;
+                background-color: #ffffff;
+                border-radius: 4px;
             }
             QTabBar::tab {
-                background-color: #e9ecef;
+                background-color: #d0d5dd;
+                color: #495057;
+                font-weight: bold;
+                border: 1px solid #adb5bd;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
-                padding: 8px 16px;
-                margin-right: 2px;
+                padding: 10px 20px;
+                margin-right: 3px;
             }
             QTabBar::tab:selected {
                 background-color: #ffffff;
-                border-bottom: 2px solid #007bff;
+                color: #0d6efd;
+                border-bottom: none;
+                border-top: 3px solid #0d6efd;
             }
             QTabBar::tab:hover:!selected {
-                background-color: #dee2e6;
+                background-color: #e2e6ea;
             }
         """)
         
@@ -426,7 +450,27 @@ class MainWindowWidget(QMainWindow):
         self.start_action.setIconText("Start")
         self.start_action.setToolTip("Start health monitoring")
         self.start_action.triggered.connect(self.start_monitoring)
-        toolbar.addAction(self.start_action)
+        # Custom styling for the start button
+        start_button = QPushButton("Start")
+        start_button.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_MediaPlay))
+        start_button.setStyleSheet("""
+            QPushButton {
+                background-color: #198754;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #157347;
+            }
+            QPushButton:pressed {
+                background-color: #146c43;
+            }
+        """)
+        start_button.clicked.connect(self.start_monitoring)
+        toolbar.addWidget(start_button)
         
         # Stop monitoring action
         self.stop_action = QAction("Stop Monitoring", self)
@@ -435,7 +479,32 @@ class MainWindowWidget(QMainWindow):
         self.stop_action.setToolTip("Stop health monitoring")
         self.stop_action.triggered.connect(self.stop_monitoring)
         self.stop_action.setEnabled(False)
-        toolbar.addAction(self.stop_action)
+        # Custom styling for the stop button
+        stop_button = QPushButton("Stop")
+        stop_button.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_MediaStop))
+        stop_button.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #bb2d3b;
+            }
+            QPushButton:pressed {
+                background-color: #b02a37;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        stop_button.clicked.connect(self.stop_monitoring)
+        stop_button.setEnabled(False)
+        self.stop_button = stop_button  # Store reference to update enabled state
+        toolbar.addWidget(stop_button)
         
         # Add separator
         toolbar.addSeparator()
@@ -446,7 +515,27 @@ class MainWindowWidget(QMainWindow):
         exit_action.setIconText("Exit")
         exit_action.setToolTip("Exit the application")
         exit_action.triggered.connect(self.close)
-        toolbar.addAction(exit_action)
+        # Custom styling for the exit button
+        exit_button = QPushButton("Exit")
+        exit_button.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_DialogCloseButton))
+        exit_button.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #5c636a;
+            }
+            QPushButton:pressed {
+                background-color: #565e64;
+            }
+        """)
+        exit_button.clicked.connect(self.close)
+        toolbar.addWidget(exit_button)
     
     @pyqtSlot()
     def start_monitoring(self):
@@ -472,6 +561,7 @@ class MainWindowWidget(QMainWindow):
             self.is_monitoring = True
             self.start_action.setEnabled(False)
             self.stop_action.setEnabled(True)
+            self.stop_button.setEnabled(True)
             self.status_bar.showMessage("Monitoring started")
             
             logger.info("Monitoring started")
@@ -508,6 +598,7 @@ class MainWindowWidget(QMainWindow):
             self.is_monitoring = False
             self.start_action.setEnabled(True)
             self.stop_action.setEnabled(False)
+            self.stop_button.setEnabled(False)
             self.status_bar.showMessage("Monitoring stopped")
             
             # Clear camera view
