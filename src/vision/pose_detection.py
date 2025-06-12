@@ -11,6 +11,7 @@ import mediapipe as mp
 from typing import Dict, Tuple, List, Optional
 from dataclasses import dataclass
 from enum import Enum
+from src.utils.config import get_config
 
 logger = logging.getLogger("employee_health_monitor.vision.pose_detection")
 
@@ -35,11 +36,12 @@ class PostureDetector:
     
     def __init__(
         self,
+        # Default values will be overridden by config below
         min_detection_confidence: float = 0.5,
         min_tracking_confidence: float = 0.5,
-        history_size: int = 20,  # Increased from 10 for better temporal smoothing
-        standing_threshold: float = 0.65,  # Adjusted for new scoring method
-        sitting_threshold: float = 0.35,   # Adjusted for new scoring method
+        history_size: int = 20,
+        standing_threshold: float = 0.65,
+        sitting_threshold: float = 0.35,
     ):
         """Initialize the posture detector.
         
@@ -50,19 +52,28 @@ class PostureDetector:
             standing_threshold: Threshold for standing detection (0-1)
             sitting_threshold: Threshold for sitting detection (0-1)
         """
+        config = get_config()
+
+        # Load parameters from config
+        _min_detection_confidence = config.get("detection.posture.min_detection_confidence", min_detection_confidence)
+        _min_tracking_confidence = config.get("detection.posture.min_tracking_confidence", min_tracking_confidence)
+        _history_size = config.get("detection.posture.history_size", history_size)
+        _standing_threshold = config.get("detection.posture.standing_threshold", standing_threshold)
+        _sitting_threshold = config.get("detection.posture.sitting_threshold", sitting_threshold)
+
         self.mp_pose = mp.solutions.pose
         self.mp_drawing = mp.solutions.drawing_utils
         self.mp_drawing_styles = mp.solutions.drawing_styles
         
         self.pose = self.mp_pose.Pose(
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence,
+            min_detection_confidence=_min_detection_confidence,
+            min_tracking_confidence=_min_tracking_confidence,
             model_complexity=1,  # 0=Lite, 1=Full, 2=Heavy
         )
         
-        self.history_size = history_size
-        self.standing_threshold = standing_threshold
-        self.sitting_threshold = sitting_threshold
+        self.history_size = _history_size
+        self.standing_threshold = _standing_threshold
+        self.sitting_threshold = _sitting_threshold
         
         self.posture_history = []
         self.current_state = PostureState.UNKNOWN
@@ -70,8 +81,8 @@ class PostureDetector:
         self.events = []
         
         logger.info(
-            f"PostureDetector initialized with standing_threshold={standing_threshold}, "
-            f"sitting_threshold={sitting_threshold}"
+            f"PostureDetector initialized with history_size={self.history_size}, "
+            f"standing_threshold={self.standing_threshold}, sitting_threshold={self.sitting_threshold}"
         )
     
     def process_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, Optional[PostureEvent]]:
@@ -275,8 +286,8 @@ class PostureDetector:
         if lower_body_visible:
             # If lower body is visible, use all features
             final_score = (
-                0.4 * (torso_height / (body_height / visible_parts)) +  # Torso height ratio
-                0.3 * knee_angle_score +                                # Knee angle
+                0.3 * (torso_height / (body_height / visible_parts)) +  # Torso height ratio
+                0.4 * knee_angle_score +                                # Knee angle
                 0.2 * hip_angle_score +                                 # Hip angle
                 0.1 * alignment_score                                   # Torso alignment
             )

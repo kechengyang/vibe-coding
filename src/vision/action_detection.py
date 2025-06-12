@@ -11,6 +11,7 @@ import mediapipe as mp
 from typing import Dict, Tuple, List, Optional
 from dataclasses import dataclass
 from enum import Enum
+from src.utils.config import get_config
 
 logger = logging.getLogger("employee_health_monitor.vision.action_detection")
 
@@ -34,12 +35,13 @@ class DrinkingDetector:
     
     def __init__(
         self,
+        # Default values will be overridden by config below
         min_detection_confidence: float = 0.5,
         min_tracking_confidence: float = 0.5,
-        history_size: int = 15,  # Reduced for faster response
+        history_size: int = 20,
         hand_to_face_threshold: float = 0.15,
-        drinking_confidence_threshold: float = 0.55,  # Lowered for better sensitivity
-        min_drinking_frames: int = 5,  # Reduced for faster detection
+        drinking_confidence_threshold: float = 0.55,
+        min_drinking_frames: int = 5,
     ):
         """Initialize the drinking detector.
         
@@ -51,6 +53,17 @@ class DrinkingDetector:
             drinking_confidence_threshold: Threshold for drinking detection (0-1)
             min_drinking_frames: Minimum number of frames to consider as drinking
         """
+        config = get_config()
+
+        # Load parameters from config, using provided args as fallback defaults
+        # if not found in config (though they should be due to DEFAULT_CONFIG)
+        _min_detection_confidence = config.get("detection.drinking.min_detection_confidence", min_detection_confidence)
+        _min_tracking_confidence = config.get("detection.drinking.min_tracking_confidence", min_tracking_confidence)
+        _history_size = config.get("detection.drinking.history_size", history_size)
+        _hand_to_face_threshold = config.get("detection.drinking.hand_to_face_threshold", hand_to_face_threshold)
+        _drinking_confidence_threshold = config.get("detection.drinking.drinking_confidence_threshold", drinking_confidence_threshold)
+        _min_drinking_frames = config.get("detection.drinking.min_drinking_frames", min_drinking_frames)
+
         # Initialize MediaPipe Hands and Face Mesh
         self.mp_hands = mp.solutions.hands
         self.mp_face_mesh = mp.solutions.face_mesh
@@ -59,22 +72,22 @@ class DrinkingDetector:
         
         # Initialize detectors
         self.hands = self.mp_hands.Hands(
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence,
+            min_detection_confidence=_min_detection_confidence,
+            min_tracking_confidence=_min_tracking_confidence,
             max_num_hands=2,
         )
         
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence,
+            min_detection_confidence=_min_detection_confidence,
+            min_tracking_confidence=_min_tracking_confidence,
             max_num_faces=1,
         )
         
         # Configuration parameters
-        self.history_size = history_size
-        self.hand_to_face_threshold = hand_to_face_threshold
-        self.drinking_confidence_threshold = drinking_confidence_threshold
-        self.min_drinking_frames = min_drinking_frames
+        self.history_size = _history_size
+        self.hand_to_face_threshold = _hand_to_face_threshold
+        self.drinking_confidence_threshold = _drinking_confidence_threshold
+        self.min_drinking_frames = _min_drinking_frames
         
         # State variables
         self.hand_to_face_history = []
@@ -86,8 +99,10 @@ class DrinkingDetector:
         self.events = []
         
         logger.info(
-            f"DrinkingDetector initialized with hand_to_face_threshold={hand_to_face_threshold}, "
-            f"drinking_confidence_threshold={drinking_confidence_threshold}"
+            f"DrinkingDetector initialized with history_size={self.history_size}, "
+            f"hand_to_face_threshold={self.hand_to_face_threshold}, "
+            f"drinking_confidence_threshold={self.drinking_confidence_threshold}, "
+            f"min_drinking_frames={self.min_drinking_frames}"
         )
     
     def process_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, Optional[DrinkingEvent]]:
@@ -349,11 +364,16 @@ class DrinkingDetector:
         # This weighting scheme prioritizes hand-to-mouth proximity but requires
         # supporting evidence from hand configuration and movement
         final_score = (
-            0.6 * proximity_score +      # Hand close to mouth/nose
-            0.25 * hand_config_score +   # Cup-like hand shape
-            0.15 * vertical_movement_score  # Upward hand movement
+            0.5 * proximity_score +      # Hand close to mouth/nose
+            0.3 * hand_config_score +   # Cup-like hand shape
+            0.2 * vertical_movement_score  # Upward hand movement
         )
         
+        # Heuristic: if proximity_score is high, boost score by hand_config_score
+        if proximity_score > 0.8:
+            final_score += 0.1 * hand_config_score
+            final_score = min(1.0, final_score) # Ensure score doesn't exceed 1.0
+
         # Add debug annotations (can be removed in production)
         self.debug_info = {
             'wrist_to_mouth_dist': min_wrist_to_mouth_distance,
@@ -428,7 +448,7 @@ class DrinkingDetector:
                 duration = now - self.state_start_time
                 
                 # Only create event if duration is reasonable
-                if 0.5 <= duration <= 8.0:  # More restrictive duration check
+                if 0.5 <= duration <= 10.0:  # More restrictive duration check
                     event = DrinkingEvent(
                         timestamp=self.state_start_time,
                         confidence=avg_score,
@@ -449,7 +469,7 @@ class DrinkingDetector:
                 self.drinking_frames_count += 1
                 
                 # If drinking for too long, force end (likely stuck)
-                if now - self.state_start_time > 8.0:
+                if now - self.state_start_time > 10.0:
                     self.current_state = DrinkingState.NOT_DRINKING
                     self.consecutive_frames = 0
                     logger.info("Drinking event ended (timeout)")

@@ -178,6 +178,38 @@ The `Config` class in `src/utils/config.py` manages application configuration. I
 
 The `NotificationManager` class in `src/utils/notifications.py` handles system notifications. It provides methods for sending notifications and checking if reminders should be sent.
 
+
+### Detection Tuning
+
+The accuracy of posture (standing/sitting) and drinking detection can be fine-tuned to specific user environments and behaviors by adjusting parameters in the configuration file.
+
+**Configuration File:**
+
+The primary configuration file is `config.json`, typically located in `~/.employee_health_monitor/config.json` (it's created with default values on first run if it doesn't exist). Changes to this file require an application restart to take effect.
+
+**Key Parameters for Tuning:**
+
+**1. Drinking Detection:**
+   - Located under the `detection.drinking` section in `config.json`.
+   - `drinking_confidence_threshold` (float, default: 0.55): The minimum score (0-1) required from the detection algorithm to consider a frame as part of a potential drinking action. Lowering this increases sensitivity (more detections, potentially more false positives). Raising it decreases sensitivity.
+   - `min_drinking_frames` (integer, default: 5): The number of consecutive frames the `drinking_confidence_threshold` must be met to confirm a drinking event. Higher values make the detection more robust against brief, non-drinking hand-to-face movements but might miss very quick sips.
+   - `history_size` (integer, default: 20): The number of recent frames over which detection scores are smoothed.
+   - `hand_to_face_threshold` (float, default: 0.15): An internal threshold related to raw hand-to-face proximity, generally less impactful for tuning than `drinking_confidence_threshold`.
+
+**2. Posture Detection (Standing/Sitting):**
+   - Located under the `detection.posture` section in `config.json`.
+   - `standing_threshold` (float, default: 0.65): The minimum score (0-1) from the posture algorithm for the user to be classified as "standing". Higher values require a more definitive standing posture.
+   - `sitting_threshold` (float, default: 0.35): The maximum score (0-1) from the posture algorithm for the user to be classified as "sitting". Lower values require a more definitive sitting posture.
+   - *Note on Transitioning*: The system uses a hysteresis mechanism. The user enters a "transitioning" state if their posture score falls between `sitting_threshold` and `standing_threshold` or briefly crosses one of these thresholds from an established state.
+   - `history_size` (integer, default: 20): The number of recent frames over which posture scores are smoothed.
+
+**General Tuning Advice:**
+   - Adjust parameters one at a time and by small increments.
+   - Test with diverse scenarios (different ways of drinking, standing up, various environmental conditions).
+   - Use application logs (set `app.log_level` to `INFO` or `DEBUG` in `config.json`) to observe detection scores and state changes, which can help diagnose false positives/negatives.
+   - The goal is to achieve a balance that correctly identifies most true events while minimizing false detections.
+
+
 ## Design Patterns
 
 ### Observer Pattern

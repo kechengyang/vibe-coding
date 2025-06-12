@@ -42,8 +42,8 @@ class Config:
                 "min_tracking_confidence": 0.5,
                 "history_size": 20,
                 "hand_to_face_threshold": 0.15,
-                "drinking_confidence_threshold": 0.65,
-                "min_drinking_frames": 8
+                "drinking_confidence_threshold": 0.55,
+                "min_drinking_frames": 5
             }
         },
         "ui": {
